@@ -1,25 +1,97 @@
-import logo from './logo.svg';
-import './App.css';
+
+
+
+
+
+
+
+
+import React, { useState } from "react";
+import "./App.css";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Header from "./components/Header";
+//import HeroSection from "./components/HeroSection";
+import SearchResults from "./components/SearchResults";
+import Footer from "./components/Footer";
+
+
+const Home = () => {
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+
+
+  const handleSearch = (place) => {
+    console.log('Searching for:', place);
+    setSearchQuery(place.name);
+    // Mock results - in real app this would be API call
+    setSearchResults([place]);
+   
+    // Scroll to results section
+    setTimeout(() => {
+      document.getElementById('search-results')?.scrollIntoView({
+        behavior: 'smooth'
+      });
+    }, 100);
+  };
+
+
+  return (
+    <div className="min-h-screen bg-page">
+      <Header />
+      <div id="search-results">
+        <SearchResults searchQuery={searchQuery} searchResults={searchResults} />
+      </div>
+      <Footer />
+    </div>
+  );
+};
+
+
+// Placeholder pages for navigation with consistent layout
+const PageLayout = ({ title, description }) => (
+  <div className="min-h-screen bg-page">
+    <Header />
+    <div className="pt-32 pb-16">
+      <div className="max-w-4xl mx-auto px-6 text-center">
+        <h1 className="display-medium text-primary mb-6">{title}</h1>
+        <p className="body-large text-secondary mb-8">{description}</p>
+        <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-8 border border-green-200">
+          <p className="text-gray-600">This page is coming soon. We're working on bringing you amazing eco-friendly {title.toLowerCase()} experiences!</p>
+        </div>
+      </div>
+    </div>
+    <Footer />
+  </div>
+);
+
+
+const Lodges = () => <PageLayout title="Our Lodges" description="Eco-friendly accommodations in pristine natural settings" />;
+const Experiences = () => <PageLayout title="Experiences" description="Unique nature experiences that connect you with the environment" />;
+const Mission = () => <PageLayout title="Our Mission" description="Sustainable travel that preserves nature for future generations" />;
+const Plan = () => <PageLayout title="Plan Your Trip" description="Comprehensive trip planning tools for sustainable travel" />;
+const Story = () => <PageLayout title="Our Story" description="How we started our journey towards sustainable tourism" />;
+const Itinerary = () => <PageLayout title="Itinerary" description="Curated itineraries for eco-conscious travelers" />;
+
 
 function App() {
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/lodges" element={<Lodges />} />
+          <Route path="/experiences" element={<Experiences />} />
+          <Route path="/mission" element={<Mission />} />
+          <Route path="/plan" element={<Plan />} />
+          <Route path="/story" element={<Story />} />
+          <Route path="/itinerary" element={<Itinerary />} />
+        </Routes>
+      </BrowserRouter>
     </div>
   );
 }
 
+
 export default App;
+
+// Now let me update the HeroSection component to work with the new search functionality:
