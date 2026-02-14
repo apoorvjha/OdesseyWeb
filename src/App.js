@@ -4,13 +4,13 @@
 
 
 
-
+/*
 
 import React, { useState } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Header from "./components/Header";
-//import HeroSection from "./components/HeroSection";
+import HeroSection from "./components/HeroSection";
 import SearchResults from "./components/SearchResults";
 import Footer from "./components/Footer";
 
@@ -95,3 +95,124 @@ function App() {
 export default App;
 
 // Now let me update the HeroSection component to work with the new search functionality:
+*/
+
+/*
+import React, { useState } from "react";
+//import { BrowserRouter as Router, Routes, Route } from "react-router-dom"; 
+import "./index.css"; 
+
+// Components
+import Header from "./components/Header";
+import HeroSection from "./components/HeroSection"; 
+import ExploreStates from "./components/ExploreStates"; // <--- 1. IMPORT NEW COMPONENT
+import SearchResults from "./components/SearchResults";
+import Footer from "./components/Footer";
+
+function App() {
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = (place) => {
+    console.log('Searching for:', place);
+    setSearchQuery(place.name);
+    // If you have real data later, you would filter it here.
+    // For now, we just pretend the search result is the place itself.
+    setSearchResults([place]);
+    
+    // Smooth scroll to results
+    setTimeout(() => {
+      document.getElementById('search-results')?.scrollIntoView({
+        behavior: 'smooth'
+      });
+    }, 100);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
+      <Header />
+      
+      {/* Hero Section with Search Box *}
+      <HeroSection onSearch={handleSearch} /> 
+      
+      {/* --- 2. ADD EXPLORE STATES HERE --- *}
+      {/* This will show the grid of states immediately after the main image *}
+      <ExploreStates />
+
+      {/* Search Results (Only visible if you search or have content) *}
+      <div id="search-results">
+        <SearchResults searchQuery={searchQuery} searchResults={searchResults} />
+      </div>
+      
+      <Footer />
+    </div>
+  );
+}
+
+export default App;
+
+*/
+
+import React, { useState } from "react";
+// 👇 1. Import Router Components
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import "./index.css"; 
+
+import Header from "./components/Header";
+import HeroSection from "./components/HeroSection";
+import TravellerTypes from "./components/TravellerTypes"; 
+import ExperienceGrid from "./components/ExperienceGrid";
+import TravelerStories from "./components/TravelerStories";
+import ExploreStates from "./components/ExploreStates"; 
+import SearchResults from "./components/SearchResults";
+import Footer from "./components/Footer";
+// 👇 2. Import New Page
+import StateDetails from "./components/StateDetails"; 
+
+function App() {
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = (place) => {
+    setSearchQuery(place.name);
+    setSearchResults([place]);
+    setTimeout(() => {
+      document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  return (
+    <Router>
+      <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
+        <Header />
+        
+        <Routes>
+          {/* 👇 ROUTE 1: The Main Home Page */}
+          <Route path="/" element={
+            <>
+              <HeroSection onSearch={handleSearch} /> 
+              <ExploreStates />
+              <TravellerTypes />
+              <ExperienceGrid />
+              <TravelerStories />
+              <div id="traveler-diaries">
+                <TravelerStories />
+              </div>
+              <div id="search-results">
+                <SearchResults searchQuery={searchQuery} searchResults={searchResults} />
+              </div>
+            </>
+          } />
+
+          {/* 👇 ROUTE 2: The New State Detail Page */}
+          {/* ":stateCode" is a variable (like "GA" or "MH") that we pass to the page */}
+          <Route path="/state/:stateCode" element={<StateDetails />} />
+        </Routes>
+
+        <Footer />
+      </div>
+    </Router>
+  );
+}
+
+export default App;

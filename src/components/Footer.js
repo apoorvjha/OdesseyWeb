@@ -20,7 +20,7 @@ const Footer = () => {
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-3 mb-6">
               <Leaf className="h-8 w-8 text-green-300" />
-              <span className="text-2xl font-bold">EcoJourney</span>
+              <span className="text-2xl font-bold">Odessey</span>
             </div>
             <p className="text-green-100 text-lg leading-relaxed mb-6 max-w-md">
               Discover pristine landscapes and authentic experiences through sustainable travel.
@@ -33,11 +33,11 @@ const Footer = () => {
               </div>
               <div className="flex items-center space-x-3">
                 <Phone className="h-5 w-5 text-green-300" />
-                <span>+91 98765 43210</span>
+                <span>+91 9353520020</span>
               </div>
               <div className="flex items-center space-x-3">
                 <Mail className="h-5 w-5 text-green-300" />
-                <span>hello@ecojourney.in</span>
+                <span>hello@odessey.in</span>
               </div>
             </div>
           </div>
@@ -84,7 +84,7 @@ const Footer = () => {
         {/* Bottom Section */}
         <div className="border-t border-green-600/30 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-green-200 text-sm">
-            © 2024 EcoJourney. All rights reserved. Travel sustainably, explore responsibly.
+            © 2024 Odessey. All rights reserved. Travel sustainably, explore responsibly.
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <a href="/privacy" className="text-green-200 hover:text-white text-sm transition-colors">Privacy Policy</a>
