@@ -350,7 +350,7 @@ const HeroSection = ({ onSearch }) => {
     "https://www.bandhavgarh-national-park.com/images/Khajuraho_2.jpg", // Madhya Pradesh
   ];
 
-  // 3. AUTOMATIC SLIDESHOW (Speed Decreased to 8 seconds)
+  // 3. AUTOMATIC SLIDESHOW (Speed Increased to 3.5 seconds)
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentImageIndex((prevIndex) => (prevIndex + 1) % heroImages.length);
