@@ -682,29 +682,33 @@ const Header = () => {
     setOpenSection(openSection === section ? null : section);
   };
 
-  // --- SCROLL LOGIC ---
+  // --- SCROLL & ROUTE LOGIC ---
   useEffect(() => {
     const controlNavbar = () => {
       if (typeof window !== 'undefined') {
         const currentScrollY = window.scrollY;
 
-        // 1. DETECT IF AT TOP (For Styling)
-        if (currentScrollY < 50) {
-          setIsAtTop(true);  // Hero Section: Transparent/Glass
+        // 1. STYLE LOGIC (Glass vs White)
+        if (location.pathname === '/') {
+          // On Home Page: Transparent at top, White when scrolled
+          if (currentScrollY < 50) {
+            setIsAtTop(true); 
+          } else {
+            setIsAtTop(false);
+          }
         } else {
-          setIsAtTop(false); // Content Section: Solid White
+          // On Other Pages: ALWAYS White
+          setIsAtTop(false);
         }
 
-        // 2. DETECT SCROLL DIRECTION (For Visibility)
+        // 2. VISIBILITY LOGIC (Hide on scroll down, Show on scroll up)
         if (isMenuOpen) {
-          setIsVisible(false); // Hide main header when menu is open
+          setIsVisible(false);
         } else {
           if (currentScrollY > lastScrollY && currentScrollY > 100) {
-            // Scrolling DOWN -> Hide
-            setIsVisible(false);
+            setIsVisible(false); // Hide
           } else {
-            // Scrolling UP -> Show
-            setIsVisible(true);
+            setIsVisible(true);  // Show
           }
         }
 
@@ -713,18 +717,24 @@ const Header = () => {
     };
 
     window.addEventListener('scroll', controlNavbar);
+    // Trigger once immediately to set initial state based on route
+    controlNavbar();
+
     return () => window.removeEventListener('scroll', controlNavbar);
-  }, [lastScrollY, isMenuOpen]);
+  }, [lastScrollY, isMenuOpen, location.pathname]); 
 
   // Reset when route changes
   useEffect(() => {
     setIsMenuOpen(false);
     setIsVisible(true);
-    // Force check scroll position on route change
-    setIsAtTop(window.scrollY < 50);
+    // Force immediate style update
+    if (location.pathname !== '/') {
+      setIsAtTop(false); 
+    } else {
+      setIsAtTop(window.scrollY < 50);
+    }
   }, [location]);
 
-  // Prevent background scrolling when menu is open
   useEffect(() => {
     document.body.style.overflow = isMenuOpen ? 'hidden' : 'unset';
   }, [isMenuOpen]);
@@ -787,13 +797,12 @@ const Header = () => {
     position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40,
     padding: '20px',
     transition: 'transform 0.4s ease-in-out',
-    transform: isVisible ? 'translateY(0)' : 'translateY(-150%)', // Slide Up/Down logic
+    transform: isVisible ? 'translateY(0)' : 'translateY(-150%)',
     pointerEvents: isVisible ? 'auto' : 'none'
   };
 
   const innerStyle = {
     maxWidth: '1200px', margin: '0 auto',
-    // Logic: Glass at top, Solid White when scrolled up
     backgroundColor: isAtTop ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 1)', 
     backdropFilter: isAtTop ? 'blur(10px)' : 'none',
     border: isAtTop ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0,0,0,0.05)',
@@ -805,12 +814,9 @@ const Header = () => {
   };
 
   const textColor = isAtTop ? 'white' : '#111827';
-  // If your logo is white, invert it when background becomes white (unless it's a full color logo)
-  const logoFilter = isAtTop ? 'none' : 'invert(1)'; 
-
+  
   return (
     <>
-      {/* --- MAIN HEADER --- */}
       <header style={headerStyle}>
         <div style={innerStyle}>
           
@@ -819,7 +825,8 @@ const Header = () => {
             <img 
               src={logoSrc} 
               alt="Odessey Logo" 
-              style={{ height: '40px', width: 'auto', objectFit: 'contain', filter: 'none' }} 
+              // 👇 FIX: Removed the filter property. Now it displays original colors always.
+              style={{ height: '40px', width: 'auto', objectFit: 'contain' }} 
             />
             <span style={{ fontSize: '20px', fontWeight: 'bold', color: textColor, transition: 'color 0.3s' }}>
               Odessey
@@ -878,7 +885,6 @@ const Header = () => {
           borderBottom: '1px solid #f3f4f6'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {/* Force logo text to black inside white drawer */}
             <img src={logoSrc} alt="Odessey Logo" style={{ height: '35px', width: 'auto', objectFit: 'contain' }} />
             <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827' }}>Odessey</span>
           </div>
@@ -893,7 +899,6 @@ const Header = () => {
         {/* DRAWER CONTENT */}
         <div style={{ padding: '30px', overflowY: 'auto', flex: 1 }}>
 
-          {/* CTA Button */}
           <button 
             onClick={() => { setIsMenuOpen(false); navigate('/plan'); }}
             style={{
@@ -908,7 +913,6 @@ const Header = () => {
             Plan Your Adventure <ArrowRight size={20} />
           </button>
 
-          {/* Menu Sections */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {menuStructure.map((section, idx) => (
               <div key={idx} style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: '15px' }}>
@@ -947,7 +951,6 @@ const Header = () => {
           </div>
         </div>
         
-        {/* DRAWER FOOTER */}
         <div style={{ padding: '20px 30px', backgroundColor: '#f9fafb', borderTop: '1px solid #e5e7eb' }}>
           <p style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center' }}>© 2024 Odessey. Travel sustainably.</p>
         </div>

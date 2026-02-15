@@ -236,9 +236,9 @@ const TravelerStories = () => {
       
       The best part? The food. The cliff edge is lined with cafes serving the freshest seafood. I spent hours at Café del Mar, reading a book and sipping iced coffee. Walking down the steps to the Black Beach for a sunset swim became my daily ritual. If you want to disconnect to reconnect, this is the place.`,
       gallery: [
-        "https://images.unsplash.com/photo-1590050752117-238cb0fb5689?auto=format&fit=crop&w=600&q=80", // Cliff View
-        "https://images.unsplash.com/photo-1596323676158-1f486d5252b4?auto=format&fit=crop&w=600&q=80", // Food
-        "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80"  // Beach
+        "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/15/c8/f1/cb/varkala-beach.jpg?w=1200&h=-1&s=1", // Cliff View
+        "https://content.jdmagicbox.com/comp/varkala/b2/0471px471.x471.230623210259.v3b2/catalogue/sherly-s-kitchen-temple-road-varkala-kerala-restaurants-sABLOaTZxy.jpg", // Food
+        "https://images.trvl-media.com/place/553248635939591757/6a096070-1539-4a54-85b7-98aec7e7aaa9.jpg"  // Beach
       ]
     },
     {
@@ -247,7 +247,7 @@ const TravelerStories = () => {
       location: "Meghalaya, North East",
       date: "Jan 15, 2024",
       avatar: "https://randomuser.me/api/portraits/men/46.jpg",
-      image: "https://images.unsplash.com/photo-1622308644420-a94bb8a23fa9?auto=format&fit=crop&w=800&q=80",
+      image: "https://meghtour.web-assets.org/cdn-cgi/image/format=auto,width=1366,quality=90,fit=scale-down,slow-connection-quality=45/experiences/nature-wildlife.jpg",
       title: "Walking on Living Roots",
       preview: "Trekking to the Double Decker Root Bridge was the most physically demanding yet rewarding experience of my life...",
       fullStory: `Trekking to the Double Decker Root Bridge was the most physically demanding yet rewarding experience of my life. 3,500 steps down into the valley, surrounded by dense jungle.
@@ -256,9 +256,9 @@ const TravelerStories = () => {
       
       We took a dip in the crystal clear blue pools underneath the bridge. The water was freezing but refreshing. The hike back up tested our endurance, but the local Maggi and tea stalls kept us going. Meghalaya truly is the abode of clouds.`,
       gallery: [
-        "https://images.unsplash.com/photo-1592345279419-959d784e8aad?auto=format&fit=crop&w=600&q=80", // Waterfall
-        "https://images.unsplash.com/photo-1626084022830-589574516629?auto=format&fit=crop&w=600&q=80", // Bridge
-        "https://images.unsplash.com/photo-1605628574765-6548df80cc1b?auto=format&fit=crop&w=600&q=80"  // Jungle
+        "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0f/88/e4/8f/noh-ka-likai-falls.jpg?w=500&h=500&s=1", // Waterfall
+        "https://i.guim.co.uk/img/media/e10bf32222cbb2ac446733c89740f2a76d0f9866/0_85_6000_3600/master/6000.jpg?width=1200&height=900&quality=85&auto=format&fit=crop&s=090b63ec9e1d6852d9f7b14b9917092c", // Bridge
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Sacred_forest%2C_Mawphlang%2C_Meghalaya.jpg/1280px-Sacred_forest%2C_Mawphlang%2C_Meghalaya.jpg"  // Jungle
       ]
     }
   ];
