@@ -741,6 +741,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { State } from 'country-state-city';
 import { ArrowLeft, MapPin, Info, ExternalLink } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 // --- 1. INTERNAL DATABASE (For Top Destinations Grid ONLY) ---
 const placeDatabase = {
@@ -844,6 +845,36 @@ const StateDetails = () => {
   const [wikiData, setWikiData] = useState(null);
   const [subDestinations, setSubDestinations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [summarizing, setSummarizing] = useState(false);
+
+  // --- HELPER: SUMMARIZE TEXT USING OLLAMA ---
+  const summarizeWithOllama = async (text) => {
+    try {
+      const response = await fetch('http://localhost:5051/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gemma3:4b', // or your preferred model (llama2, neural-chat, etc.)
+          prompt: `You are a travel guide expert. Summarize and beautifully format the following Wikipedia text using markdown tags about an Indian destination into 2-3 engaging paragraphs. Focus on culture, attractions, and travel appeal. Exclude text such as 'here is your summary...'. Keep it concise but informative:\n\n${text}`,
+          stream: false,
+          temperature: 0.7,
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn('Ollama API error:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      return data.response || null;
+    } catch (error) {
+      console.error('Ollama Summarization Error:', error);
+      return null;
+    }
+  };
 
   // --- HELPER: FETCH WIKIPEDIA DATA ---
   const fetchWikiData = async (query) => {
@@ -866,9 +897,19 @@ const StateDetails = () => {
 
       if (pageId && pageId !== "-1") {
         const page = pages[pageId];
+        
+        // 3. Summarize Wikipedia extract using Ollama
+        let summarizedText = page.extract; // Fallback to original if summarization fails
+        if (page.extract) {
+          const summary = await summarizeWithOllama(page.extract);
+          if (summary) {
+            summarizedText = summary;
+          }
+        }
+        
         return {
           title: page.title,
-          extract: page.extract,
+          extract: summarizedText,
           image: page.thumbnail ? page.thumbnail.source : null,
           url: `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title)}`
         };
@@ -882,6 +923,7 @@ const StateDetails = () => {
   useEffect(() => {
     const loadContent = async () => {
       setLoading(true);
+      setSummarizing(false);
       
       // 1. Resolve State/Place Name
       let searchName = placeName;
@@ -897,8 +939,10 @@ const StateDetails = () => {
       
       setDisplayName(searchName);
 
-      // 2. Fetch Wiki Data (Text & Hero Image)
+      // 2. Fetch Wiki Data (includes Ollama summarization)
+      setSummarizing(true);
       const wikiResult = await fetchWikiData(searchName);
+      setSummarizing(false);
       setWikiData(wikiResult);
 
       // 3. Fetch Internal Sub-Destinations (The Grid)
@@ -915,8 +959,9 @@ const StateDetails = () => {
   }, [placeName]);
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '20px' }}>
       <p style={{ fontSize: '18px', color: '#6b7280' }}>Fetching travel details...</p>
+      {summarizing && <p style={{ fontSize: '14px', color: '#9ca3af', fontStyle: 'italic' }}>✨ Summarizing with Ollama AI...</p>}
     </div>
   );
 
@@ -972,9 +1017,31 @@ const StateDetails = () => {
             )}
           </div>
           
-          <p style={{ fontSize: '18px', lineHeight: '1.8', color: '#4b5563', marginBottom: '0' }}>
-            {description}
-          </p>
+          <div style={{ fontSize: '18px', lineHeight: '1.8', color: '#4b5563', marginBottom: '20px' }}>
+            <ReactMarkdown
+              components={{
+                h1: ({ children }) => <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '16px', marginBottom: '12px', color: '#1f2937' }}>{children}</h3>,
+                h2: ({ children }) => <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '14px', marginBottom: '10px', color: '#1f2937' }}>{children}</h3>,
+                h3: ({ children }) => <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '12px', marginBottom: '8px', color: '#1f2937' }}>{children}</h4>,
+                p: ({ children }) => <p style={{ marginBottom: '12px', margin: '12px 0' }}>{children}</p>,
+                strong: ({ children }) => <strong style={{ fontWeight: 'bold', color: '#16a34a' }}>{children}</strong>,
+                em: ({ children }) => <em style={{ fontStyle: 'italic', color: '#6b7280' }}>{children}</em>,
+                ul: ({ children }) => <ul style={{ marginLeft: '20px', marginBottom: '12px', listStyle: 'disc' }}>{children}</ul>,
+                ol: ({ children }) => <ol style={{ marginLeft: '20px', marginBottom: '12px', listStyle: 'decimal' }}>{children}</ol>,
+                li: ({ children }) => <li style={{ marginBottom: '6px' }}>{children}</li>,
+                blockquote: ({ children }) => <blockquote style={{ borderLeft: '4px solid #16a34a', paddingLeft: '16px', marginLeft: '0', marginBottom: '12px', fontStyle: 'italic', color: '#6b7280' }}>{children}</blockquote>,
+                code: ({ children }) => <code style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '14px' }}>{children}</code>,
+              }}
+            >
+              {description}
+            </ReactMarkdown>
+          </div>
+          
+          <div style={{ paddingTop: '16px', borderTop: '1px solid #e5e7eb', fontSize: '12px', color: '#9ca3af' }}>
+            <span style={{ fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              ✨ Content enhanced and formatted using Ollama AI • Source: Wikipedia
+            </span>
+          </div>
         </div>
 
         {/* SUB-DESTINATIONS GRID (Only if available in our DB) */}

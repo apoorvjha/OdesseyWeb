@@ -498,7 +498,7 @@ import { Menu } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 // Import your logo
-import logoSrc from '/Users/sahilgupta/OdesseyWeb/odessey-web/src/Odesseylogo/logo_odessey.png'; 
+import logoSrc from '../Odesseylogo/logo_odessey.png'; 
 
 const Header = () => {
   const navigate = useNavigate();
