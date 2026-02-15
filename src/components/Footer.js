@@ -107,7 +107,7 @@ import { MapPin, Phone, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // 👇 1. Import your Logo
-import logoSrc from '/Users/sahilgupta/OdesseyWeb/odessey-web/src/Odesseylogo/logo_odessey.png';
+import logoSrc from '../Odesseylogo/logo_odessey.png';
 
 const Footer = () => {
   const navigate = useNavigate();

@@ -1,6 +1,6 @@
 import React from 'react';
 // 👇 1. Import your Logo
-import logoSrc from '/Users/sahilgupta/OdesseyWeb/odessey-web/src/Odesseylogo/logo_odessey.png';
+import logoSrc from '../Odesseylogo/logo_odessey.png';
 
 const MissionPage = () => {
   return (
