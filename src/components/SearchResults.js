@@ -455,13 +455,13 @@ const SearchResults = ({ searchQuery, searchResults }) => {
               backgroundColor: 'white'
             }}>
               
-              {/* IMAGE: Uses Unsplash fallback if result.img is missing */}
+              {/* IMAGE: Uses Odessey logo fallback if no image is fetched */}
               <div style={{ height: '200px', width: '100%', overflow: 'hidden', backgroundColor: '#f3f4f6' }}>
                 <img 
-                  src={images[result.name] || 'https://source.unsplash.com/random/600x400?travel'} 
+                  src={images[result.name] || '/logo.png'} 
                   alt={result.name}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  onError={(e) => { e.target.src = 'https://source.unsplash.com/random/600x400?travel'; }}
+                  onError={(e) => { e.target.src = '/logo.png'; }}
                 />
               </div>
 
