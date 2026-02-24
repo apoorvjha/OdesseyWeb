@@ -218,9 +218,9 @@ function App() {
 export default App;
 */
 
-import React, { useState } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+// 👇 Added useLocation here
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import "./index.css"; 
 
 // Existing Components
@@ -233,9 +233,8 @@ import ExperienceGrid from "./components/ExperienceGrid";
 import TravelerStories from "./components/TravelerStories";
 import SearchResults from "./components/SearchResults";
 import StateDetails from "./components/StateDetails"; 
-//import Stories from "./components/StoriesPage";
 
-// 👇 NEW PAGES (We will create these next)
+// Pages
 import PlanTrip from "./pages/PlanTrip";
 import StoriesPage from "./pages/StoriesPage";
 import ItinerariesPage from "./pages/ItinerariesPage";
@@ -243,6 +242,18 @@ import LodgesPage from "./pages/LodgesPage";
 import ExperiencesPage from "./pages/ExperiencesPage";
 import MissionPage from "./pages/MissionPage";
 import AboutPage from "./pages/AboutPage";
+
+// 👇 NEW: ScrollToTop Helper Component
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    // Instantly scroll to the top left (x: 0, y: 0) every time the path changes
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null; 
+};
 
 function App() {
   const [searchResults, setSearchResults] = useState([]);
@@ -258,6 +269,9 @@ function App() {
 
   return (
     <Router>
+      {/* 👇 NEW: Place ScrollToTop directly inside the Router */}
+      <ScrollToTop />
+      
       <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
         <Header />
         
@@ -282,7 +296,7 @@ function App() {
          <Route path="/place/:placeName" element={<StateDetails />} />
          <Route path="/state/:stateName" element={<StateDetails />} />
 
-          {/* 👇 NEW ROUTES FOR HEADER LINKS */}
+          {/* NEW ROUTES FOR HEADER LINKS */}
           <Route path="/plan" element={<PlanTrip />} />
           <Route path="/story" element={<StoriesPage />} />
           <Route path="/itinerary" element={<ItinerariesPage />} />

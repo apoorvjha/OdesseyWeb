@@ -660,8 +660,8 @@ export default Header;
 */
 
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ChevronDown, MapPin, Compass, Calendar, Camera, Leaf, MessageCircle, ArrowRight } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Menu, X, ChevronDown, MapPin, Compass, Calendar, Camera, Info, MessageCircle, ArrowRight, Map, Car, LayoutGrid } from 'lucide-react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 
 // Import your logo
 import logoSrc from '../Odesseylogo/logo_odessey.png'; 
@@ -675,11 +675,11 @@ const Header = () => {
   const [isVisible, setIsVisible] = useState(true); 
   const [isAtTop, setIsAtTop] = useState(true);     
   const [lastScrollY, setLastScrollY] = useState(0);
-  const [openSection, setOpenSection] = useState(null);
+  const [openSection, setOpenSection] = useState(null); // Controls the accordion
 
   // Toggle Accordion Helper
-  const toggleSection = (section) => {
-    setOpenSection(openSection === section ? null : section);
+  const toggleSection = (sectionTitle) => {
+    setOpenSection(openSection === sectionTitle ? null : sectionTitle);
   };
 
   // --- SCROLL & ROUTE LOGIC ---
@@ -689,11 +689,8 @@ const Header = () => {
         const currentScrollY = window.scrollY;
 
         if (location.pathname === '/') {
-          if (currentScrollY < 50) {
-            setIsAtTop(true); 
-          } else {
-            setIsAtTop(false);
-          }
+          if (currentScrollY < 50) setIsAtTop(true); 
+          else setIsAtTop(false);
         } else {
           setIsAtTop(false);
         }
@@ -701,11 +698,8 @@ const Header = () => {
         if (isMenuOpen) {
           setIsVisible(false);
         } else {
-          if (currentScrollY > lastScrollY && currentScrollY > 100) {
-            setIsVisible(false); 
-          } else {
-            setIsVisible(true);  
-          }
+          if (currentScrollY > lastScrollY && currentScrollY > 100) setIsVisible(false); 
+          else setIsVisible(true);  
         }
 
         setLastScrollY(currentScrollY);
@@ -714,83 +708,106 @@ const Header = () => {
 
     window.addEventListener('scroll', controlNavbar);
     controlNavbar();
-
     return () => window.removeEventListener('scroll', controlNavbar);
   }, [lastScrollY, isMenuOpen, location.pathname]); 
 
+  // Reset menu and style on route change
   useEffect(() => {
     setIsMenuOpen(false);
     setIsVisible(true);
-    if (location.pathname !== '/') {
-      setIsAtTop(false); 
-    } else {
-      setIsAtTop(window.scrollY < 50);
-    }
+    setOpenSection(null); // Close accordions on page change
+    if (location.pathname !== '/') setIsAtTop(false); 
+    else setIsAtTop(window.scrollY < 50);
   }, [location]);
 
+  // Lock body scroll when menu is open
   useEffect(() => {
     document.body.style.overflow = isMenuOpen ? 'hidden' : 'unset';
   }, [isMenuOpen]);
 
-  // --- NAVIGATION DATA ---
+  // --- DESKTOP NAVIGATION ---
   const desktopNavLinks = [
-    { name: 'Plan your trip', href: '/plan' },
-    { name: 'Story', href: '/story' },
-    { name: 'Itinerary', href: '/itinerary' },
-    { name: 'Our Lodges', href: '/lodges' },
+    { name: 'Plan Trip', href: '/plan' },
+    { name: 'Itineraries', href: '/itinerary' },
+    { name: 'Lodges', href: '/lodges' },
     { name: 'Experiences', href: '/experiences' },
+    { name: 'Diaries', href: '/story' },
     { name: 'About Us', href: '/about' }
   ];
 
+  // --- MOBILE ACCORDION STRUCTURE ---
   const menuStructure = [
     {
-      title: "Destinations", icon: MapPin, link: "/",
-      items: ["By Region / State", "Offbeat & Hidden Gems", "Mountains", "Forests & Wildlife", "Coastal Escapes"]
+      title: "Destinations", icon: MapPin,
+      items: [
+        { label: "Search Destinations", href: "/" },
+        { label: "Curated Itineraries", href: "/itinerary" },
+        { label: "Premium Lodges", href: "/lodges" }
+      ]
     },
     {
-      title: "Experiences", icon: Compass, link: "/experiences",
-      items: ["Adventure (Trekking, Rafting)", "Slow Travel", "Culture & Heritage", "Wellness Retreats", "Workations", "Budget-Friendly Trips"]
+      title: "Experiences", icon: Compass,
+      items: [
+        { label: "All Experiences", href: "/experiences" },
+        { label: "Adventure & Wildlife", href: "/experiences" },
+        { label: "Culture & Wellness", href: "/experiences" }
+      ]
     },
     {
-      title: "Plan Your Trip", icon: Calendar, link: "/plan",
-      items: ["Itineraries", "Best Time to Travel", "Travel Calendar", "Packing Guides", "Visa & Permits", "FAQs"]
+      title: "Plan Your Trip", icon: Calendar,
+      items: [
+        { label: "Custom Trip Planner", href: "/plan", navIcon: Calendar },
+        { label: "Maps & Routes", href: "/plan", navIcon: Map }, // Newly Added
+        { label: "Vehicle Options", href: "/plan", navIcon: Car }, // Newly Added
+        { label: "Other Services", href: "/plan", navIcon: LayoutGrid } // Newly Added
+      ]
     },
     {
-      title: "Inspiration", icon: Camera, link: "/story",
-      items: ["Travel Stories / Blogs", "Photo Journals", "Reels & Shorts", "Community Stories", "Testimonials"]
+      title: "Inspiration", icon: Camera,
+      items: [
+        { label: "Travel Diaries", href: "/story" },
+        { label: "Traveller Stories", href: "/story" }
+      ]
     },
     {
-      title: "About Odessey", icon: Leaf, link: "/about",
-      items: ["Company Profile", "Our Mission", "Our Vision", "Why Odessey", "Sustainability", "Our Team", "Careers"]
+      title: "About Odessey", icon: Info,
+      items: [
+        { label: "Our Story", href: "/about" },
+        { label: "Our Mission", href: "/mission" }
+      ]
     },
     {
-      title: "Help & Connect", icon: MessageCircle, link: "#footer",
-      items: ["Contact Us", "WhatsApp / Chat", "Cancellation & Refund", "Terms & Privacy"]
+      title: "Help & Connect", icon: MessageCircle,
+      items: [
+        { label: "Contact Us", href: "/#footer" },
+        { label: "WhatsApp Support", href: "https://wa.me/919353520020", external: true }
+      ]
     }
   ];
 
-  // 👇 FIX: Bulletproof navigation handler
-  const handleNavClick = (href) => {
-    if (href.startsWith('/#')) {
-      const id = href.split('#')[1];
+  const handleMobileNavClick = (e, item) => {
+    if (item.external) {
+      window.open(item.href, '_blank');
+      return;
+    }
+    if (item.href.startsWith('/#')) {
+      e.preventDefault();
+      const id = item.href.split('#')[1];
       if (location.pathname !== '/') {
         navigate('/');
-        setTimeout(() => {
-          document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
+        setTimeout(() => { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); }, 100);
       } else {
         document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
       }
     } else {
-      // Use standard navigate for /story, /plan, etc.
-      navigate(href);
+      navigate(item.href);
     }
+    setIsMenuOpen(false); // Close menu after clicking
   };
 
   // --- DYNAMIC STYLES ---
   const headerStyle = {
-    position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40,
-    padding: '20px',
+    position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40, padding: '20px',
     transition: 'transform 0.4s ease-in-out',
     transform: isVisible ? 'translateY(0)' : 'translateY(-150%)',
     pointerEvents: isVisible ? 'auto' : 'none'
@@ -802,8 +819,7 @@ const Header = () => {
     backdropFilter: isAtTop ? 'blur(10px)' : 'none',
     border: isAtTop ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(0,0,0,0.05)',
     boxShadow: isAtTop ? '0 4px 6px rgba(0,0,0,0.05)' : '0 4px 20px rgba(0,0,0,0.1)',
-    borderRadius: '16px',
-    padding: '10px 24px',
+    borderRadius: '16px', padding: '10px 24px',
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     transition: 'background-color 0.3s ease, box-shadow 0.3s ease'
   };
@@ -812,154 +828,139 @@ const Header = () => {
   
   return (
     <>
+      {/* --- DESKTOP HEADER --- */}
       <header style={headerStyle}>
         <div style={innerStyle}>
           
-          {/* Logo */}
-          <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-            <img 
-              src={logoSrc} 
-              alt="Odessey Logo" 
-              style={{ height: '40px', width: 'auto', objectFit: 'contain' }} 
-            />
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', textDecoration: 'none' }}>
+            <img src={logoSrc} alt="Odessey Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain' }} />
             <span style={{ fontSize: '20px', fontWeight: 'bold', color: textColor, transition: 'color 0.3s' }}>
               Odessey
             </span>
-          </div>
+          </Link>
 
-          {/* 👇 FIX: Switched back to functional spans with reliable onClick navigation */}
           <div className="hidden md:flex items-center gap-6">
             {desktopNavLinks.map((link) => (
-              <span 
-                key={link.name} 
-                onClick={() => handleNavClick(link.href)} 
+              <Link 
+                key={link.name} to={link.href} 
                 style={{
-                  color: textColor, fontSize: '14px', fontWeight: '500',
-                  padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'color 0.3s'
+                  color: textColor, fontSize: '14px', fontWeight: '600', textDecoration: 'none',
+                  padding: '8px 12px', borderRadius: '8px', transition: 'all 0.2s',
+                  backgroundColor: location.pathname === link.href ? (isAtTop ? 'rgba(255,255,255,0.2)' : '#f3f4f6') : 'transparent'
                 }}
                 onMouseEnter={(e) => e.target.style.backgroundColor = isAtTop ? 'rgba(255,255,255,0.2)' : '#f3f4f6'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = location.pathname === link.href ? (isAtTop ? 'rgba(255,255,255,0.2)' : '#f3f4f6') : 'transparent'}
               >
                 {link.name}
-              </span>
+              </Link>
             ))}
           </div>
 
-          {/* Hamburger Trigger */}
-          <button 
-            onClick={() => setIsMenuOpen(true)}
-            style={{ 
-              background: 'none', border: 'none', 
-              color: textColor, 
-              cursor: 'pointer', padding: '4px',
-              transition: 'color 0.3s'
-            }}
-          >
+          <button onClick={() => setIsMenuOpen(true)} style={{ background: 'none', border: 'none', color: textColor, cursor: 'pointer', padding: '4px', transition: 'color 0.3s' }}>
             <Menu size={28} />
           </button>
         </div>
       </header>
 
-      {/* --- SLIDE-OUT MENU DRAWER --- */}
+      {/* --- MOBILE SLIDE-OUT MENU --- */}
       <div style={{
         position: 'fixed', top: 0, right: 0, bottom: 0,
-        width: '100%', maxWidth: '400px',
-        backgroundColor: 'white',
-        zIndex: 50,
+        width: '100%', maxWidth: '400px', backgroundColor: 'white', zIndex: 50,
         transform: isMenuOpen ? 'translateX(0)' : 'translateX(100%)',
         transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-        boxShadow: '-10px 0 30px rgba(0,0,0,0.1)',
+        boxShadow: '-20px 0 50px rgba(0,0,0,0.15)',
         display: 'flex', flexDirection: 'column'
       }}>
         
-        {/* DRAWER HEADER */}
-        <div style={{ 
-          padding: '20px 30px', 
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          borderBottom: '1px solid #f3f4f6'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <img src={logoSrc} alt="Odessey Logo" style={{ height: '35px', width: 'auto', objectFit: 'contain' }} />
-            <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#111827' }}>Odessey</span>
+        {/* Drawer Header */}
+        <div style={{ padding: '25px 30px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f3f4f6' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <img src={logoSrc} alt="Odessey Logo" style={{ height: '30px', width: 'auto', objectFit: 'contain' }} />
+            <span style={{ fontSize: '20px', fontWeight: '800', color: '#111827' }}>Odessey</span>
           </div>
           <button 
             onClick={() => { setIsMenuOpen(false); setIsVisible(true); }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#111827' }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#111827', padding: '4px' }}
           >
-            <X size={28} />
+            <X size={24} />
           </button>
         </div>
 
-        {/* DRAWER CONTENT */}
-        <div style={{ padding: '30px', overflowY: 'auto', flex: 1 }}>
-
+        {/* Drawer Content */}
+        <div style={{ padding: '30px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column' }}>
+          
+          {/* Big Green Action Button */}
           <button 
             onClick={() => { setIsMenuOpen(false); navigate('/plan'); }}
-            style={{
-              width: '100%', backgroundColor: '#16a34a', color: 'white',
-              border: 'none', padding: '16px', borderRadius: '12px',
-              fontSize: '16px', fontWeight: 'bold',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-              marginBottom: '30px', cursor: 'pointer',
-              boxShadow: '0 4px 15px rgba(22, 163, 74, 0.3)'
+            style={{ 
+              width: '100%', backgroundColor: '#16a34a', color: 'white', 
+              padding: '16px', borderRadius: '12px', fontSize: '16px', fontWeight: 'bold', 
+              border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              marginBottom: '30px', transition: 'background 0.2s' 
             }}
+            onMouseEnter={(e)=>e.currentTarget.style.backgroundColor='#15803d'} 
+            onMouseLeave={(e)=>e.currentTarget.style.backgroundColor='#16a34a'}
           >
-            Plan Your Adventure <ArrowRight size={20} />
+            Plan Your Adventure <ArrowRight size={18} />
           </button>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Accordion Menu */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
             {menuStructure.map((section, idx) => (
-              <div key={idx} style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: '15px' }}>
+              <div key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                
+                {/* Accordion Header */}
                 <div 
                   onClick={() => toggleSection(section.title)}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '10px 0' }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 0', cursor: 'pointer' }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <section.icon size={20} color="#16a34a" />
-                    <span style={{ fontSize: '18px', fontWeight: '600', color: '#111827' }}>{section.title}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <section.icon size={22} color="#16a34a" strokeWidth={2} />
+                    <span style={{ fontSize: '17px', fontWeight: '600', color: '#1f2937' }}>{section.title}</span>
                   </div>
-                  <ChevronDown size={20} color="#9ca3af" style={{ transform: openSection === section.title ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }} />
+                  <ChevronDown size={20} color="#9ca3af" style={{ transform: openSection === section.title ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }} />
                 </div>
                 
-                {openSection === section.title && (
-                  <div style={{ paddingLeft: '32px', marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div 
-                      onClick={() => { setIsMenuOpen(false); navigate(section.link); }} 
-                      style={{ color: '#16a34a', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '5px' }}
-                    >
-                      View All &rarr;
-                    </div>
+                {/* Accordion Expanded Content */}
+                <div style={{ 
+                  maxHeight: openSection === section.title ? '400px' : '0', 
+                  overflow: 'hidden', transition: 'max-height 0.3s ease-in-out',
+                  paddingLeft: '37px' 
+                }}>
+                  <div style={{ paddingBottom: '15px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {section.items.map((item, subIdx) => (
                       <div 
                         key={subIdx} 
-                        onClick={() => { setIsMenuOpen(false); navigate(section.link); }}
-                        style={{ fontSize: '15px', color: '#4b5563', cursor: 'pointer', padding: '5px 0' }}
+                        onClick={(e) => handleMobileNavClick(e, item)}
+                        style={{ fontSize: '15px', color: '#4b5563', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'color 0.2s' }}
+                        onMouseEnter={(e)=>e.currentTarget.style.color='#16a34a'} 
+                        onMouseLeave={(e)=>e.currentTarget.style.color='#4b5563'}
                       >
-                        {item}
+                        {item.navIcon && <item.navIcon size={14} color="#9ca3af" />}
+                        {item.label}
                       </div>
                     ))}
                   </div>
-                )}
+                </div>
+
               </div>
             ))}
           </div>
+
         </div>
         
-        <div style={{ padding: '20px 30px', backgroundColor: '#f9fafb', borderTop: '1px solid #e5e7eb' }}>
-          <p style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center' }}>© 2024 Odessey. Travel sustainably.</p>
+        {/* Drawer Footer */}
+        <div style={{ padding: '20px 30px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>
+          © 2026 Odessey. Travel sustainably.
         </div>
 
       </div>
 
-      {/* BACKGROUND OVERLAY */}
+      {/* --- BACKGROUND OVERLAY --- */}
       {isMenuOpen && (
         <div 
           onClick={() => { setIsMenuOpen(false); setIsVisible(true); }}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 45,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            backdropFilter: 'blur(3px)'
-          }}
+          style={{ position: 'fixed', inset: 0, zIndex: 45, backgroundColor: 'rgba(17, 24, 39, 0.5)', backdropFilter: 'blur(3px)', transition: 'opacity 0.4s' }}
         />
       )}
     </>

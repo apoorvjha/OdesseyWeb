@@ -103,153 +103,79 @@ export default Footer;
 */
 
 import React from 'react';
-import { MapPin, Phone, Mail } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-
-// 👇 1. Import your Logo
-import logoSrc from '../Odesseylogo/logo_odessey.png';
+import { Link } from 'react-router-dom';
+import { MapPin, Phone, Mail, Instagram, Facebook, Twitter, Heart } from 'lucide-react';
 
 const Footer = () => {
-  const navigate = useNavigate();
-
-  const headerStyle = {
-    fontSize: '18px',
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: '20px'
-  };
-
-  const linkStyle = {
-    display: 'block',
-    color: '#4b5563',
-    textDecoration: 'none',
-    marginBottom: '12px',
-    cursor: 'pointer',
-    transition: 'color 0.2s'
-  };
-
-  const contactItemStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    color: '#4b5563',
-    marginBottom: '15px'
-  };
+  const currentYear = new Date().getFullYear();
 
   return (
-    <footer style={{ backgroundColor: 'white', borderTop: '1px solid #e5e7eb', paddingTop: '60px' }}>
+    <footer style={{ backgroundColor: '#111827', color: '#f9fafb', paddingTop: '80px', paddingBottom: '30px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
         
-        <div style={{ 
-          display: 'flex', 
-          flexWrap: 'wrap', 
-          justifyContent: 'space-between', 
-          gap: '40px', 
-          marginBottom: '50px' 
-        }}>
-
-          {/* 1. ODESSEY & CONTACT DETAILS */}
-          <div style={{ flex: '2', minWidth: '300px' }}>
-            
-            {/* 👇 2. Logo Replaced Here */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-              <img 
-                src={logoSrc} 
-                alt="Odessey Logo" 
-                style={{ height: '50px', width: 'auto', objectFit: 'contain' }} 
-              />
-              <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827' }}>Odessey</span>
-            </div>
-            
-            <p style={{ color: '#6b7280', lineHeight: '1.6', marginBottom: '25px', maxWidth: '350px' }}>
-              Discover pristine landscapes and authentic experiences through sustainable travel. We connect you with nature's untouched beauty across India.
+        {/* TOP SECTION: 4 COLUMNS */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '50px', marginBottom: '60px' }}>
+          
+          {/* Brand Col */}
+          <div>
+            <h2 style={{ fontSize: '28px', fontWeight: '800', color: 'white', marginBottom: '20px' }}>Odessey</h2>
+            <p style={{ color: '#9ca3af', lineHeight: '1.7', marginBottom: '25px', fontSize: '15px' }}>
+              Redefining travel through immersive, sustainable, and unforgettable experiences across the diverse landscapes of India.
             </p>
-
-            <div>
-              <div style={contactItemStyle}>
-                <MapPin size={18} color="#16a34a" />
-                <span>Eco-friendly destinations across India</span>
-              </div>
-              <div style={contactItemStyle}>
-                <Phone size={18} color="#16a34a" />
-                <span>+91 9353520020</span>
-              </div>
-              <div style={contactItemStyle}>
-                <Mail size={18} color="#16a34a" />
-                <span>hello@odessey.in</span>
-              </div>
+            <div style={{ display: 'flex', gap: '15px' }}>
+              <a href="#" style={{ color: '#9ca3af', transition: 'color 0.2s' }} onMouseEnter={e=>e.target.style.color='white'} onMouseLeave={e=>e.target.style.color='#9ca3af'}><Instagram size={20} /></a>
+              <a href="#" style={{ color: '#9ca3af', transition: 'color 0.2s' }} onMouseEnter={e=>e.target.style.color='white'} onMouseLeave={e=>e.target.style.color='#9ca3af'}><Facebook size={20} /></a>
+              <a href="#" style={{ color: '#9ca3af', transition: 'color 0.2s' }} onMouseEnter={e=>e.target.style.color='white'} onMouseLeave={e=>e.target.style.color='#9ca3af'}><Twitter size={20} /></a>
             </div>
           </div>
 
-          {/* 2. QUICK LINKS */}
-          <div style={{ flex: '1', minWidth: '150px' }}>
-            <h3 style={headerStyle}>Quick Links</h3>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              <li><span onClick={() => navigate('/about')} style={linkStyle} onMouseEnter={e => e.target.style.color = '#16a34a'} onMouseLeave={e => e.target.style.color = '#4b5563'}>About Us</span></li>
-              <li><span onClick={() => navigate('/lodges')} style={linkStyle} onMouseEnter={e => e.target.style.color = '#16a34a'} onMouseLeave={e => e.target.style.color = '#4b5563'}>Our Lodges</span></li>
-              <li><span onClick={() => navigate('/#traveler-diaries')} style={linkStyle} onMouseEnter={e => e.target.style.color = '#16a34a'} onMouseLeave={e => e.target.style.color = '#4b5563'}>Experiences</span></li>
-              <li><span onClick={() => navigate('/vision')} style={linkStyle} onMouseEnter={e => e.target.style.color = '#16a34a'} onMouseLeave={e => e.target.style.color = '#4b5563'}>Our Vision</span></li>
-              <li><span onClick={() => navigate('/mission')} style={linkStyle} onMouseEnter={e => e.target.style.color = '#16a34a'} onMouseLeave={e => e.target.style.color = '#4b5563'}>Our Mission</span></li>
-            </ul>
-          </div>
-
-          {/* 3. STAY CONNECTED */}
-          <div style={{ flex: '1.5', minWidth: '250px' }}>
-            <h3 style={headerStyle}>Stay Connected</h3>
-            <p style={{ color: '#6b7280', marginBottom: '20px' }}>
-              Get updates on new eco-friendly destinations and sustainable travel tips.
-            </p>
-            
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <input 
-                type="email" 
-                placeholder="Your email address" 
-                style={{
-                  flex: 1,
-                  padding: '12px 15px',
-                  borderRadius: '8px',
-                  border: '1px solid #d1d5db',
-                  outline: 'none',
-                  fontSize: '14px'
-                }}
-              />
-              <button style={{
-                backgroundColor: '#16a34a',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '10px 20px',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}>
-                Subscribe
-              </button>
+          {/* Quick Links */}
+          <div>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'white', marginBottom: '25px' }}>Explore</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <Link to="/itinerary" style={{ color: '#9ca3af', textDecoration: 'none', fontSize: '15px', transition: 'color 0.2s' }} onMouseEnter={e=>e.target.style.color='#16a34a'} onMouseLeave={e=>e.target.style.color='#9ca3af'}>Ready Itineraries</Link>
+              <Link to="/lodges" style={{ color: '#9ca3af', textDecoration: 'none', fontSize: '15px', transition: 'color 0.2s' }} onMouseEnter={e=>e.target.style.color='#16a34a'} onMouseLeave={e=>e.target.style.color='#9ca3af'}>Premium Lodges</Link>
+              <Link to="/experiences" style={{ color: '#9ca3af', textDecoration: 'none', fontSize: '15px', transition: 'color 0.2s' }} onMouseEnter={e=>e.target.style.color='#16a34a'} onMouseLeave={e=>e.target.style.color='#9ca3af'}>Unique Experiences</Link>
+              <Link to="/story" style={{ color: '#9ca3af', textDecoration: 'none', fontSize: '15px', transition: 'color 0.2s' }} onMouseEnter={e=>e.target.style.color='#16a34a'} onMouseLeave={e=>e.target.style.color='#9ca3af'}>Travel Diaries</Link>
             </div>
           </div>
 
+          {/* Company */}
+          <div>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'white', marginBottom: '25px' }}>Company</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              {/* 👇 HERE IS THE LINK CONNECTING TO THE ABOUT US PAGE */}
+              <Link to="/about" style={{ color: '#9ca3af', textDecoration: 'none', fontSize: '15px', transition: 'color 0.2s' }} onMouseEnter={e=>e.target.style.color='#16a34a'} onMouseLeave={e=>e.target.style.color='#9ca3af'}>About Us</Link>
+              
+              <Link to="/plan" style={{ color: '#9ca3af', textDecoration: 'none', fontSize: '15px', transition: 'color 0.2s' }} onMouseEnter={e=>e.target.style.color='#16a34a'} onMouseLeave={e=>e.target.style.color='#9ca3af'}>Plan Your Trip</Link>
+              <a href="#" style={{ color: '#9ca3af', textDecoration: 'none', fontSize: '15px', transition: 'color 0.2s' }} onMouseEnter={e=>e.target.style.color='#16a34a'} onMouseLeave={e=>e.target.style.color='#9ca3af'}>Privacy Policy</a>
+              <a href="#" style={{ color: '#9ca3af', textDecoration: 'none', fontSize: '15px', transition: 'color 0.2s' }} onMouseEnter={e=>e.target.style.color='#16a34a'} onMouseLeave={e=>e.target.style.color='#9ca3af'}>Terms of Service</a>
+            </div>
+          </div>
+
+          {/* Contact */}
+          <div>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'white', marginBottom: '25px' }}>Get in Touch</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#9ca3af', fontSize: '15px' }}>
+                <Phone size={18} color="#16a34a" /> +91 93535 20020
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#9ca3af', fontSize: '15px' }}>
+                <Mail size={18} color="#16a34a" /> founders@odessey.com
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', color: '#9ca3af', fontSize: '15px', lineHeight: '1.5' }}>
+                <MapPin size={18} color="#16a34a" style={{ flexShrink: 0, marginTop: '2px' }} /> 
+                42, Goyal Complex, <br/>Ahmedabad, Gujarat, India
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* BOTTOM BAR */}
-        <div style={{ 
-          borderTop: '1px solid #f3f4f6', 
-          padding: '30px 0', 
-          marginTop: '20px',
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '20px',
-          color: '#9ca3af',
-          fontSize: '14px'
-        }}>
-          <div>
-            © 2024 Odessey. All rights reserved. Travel sustainably, explore responsibly.
-          </div>
-          
-          <div style={{ display: 'flex', gap: '25px' }}>
-            <span style={{ cursor: 'pointer', transition: 'color 0.2s' }} onMouseEnter={e => e.target.style.color = '#1f2937'} onMouseLeave={e => e.target.style.color = '#9ca3af'}>Privacy Policy</span>
-            <span style={{ cursor: 'pointer', transition: 'color 0.2s' }} onMouseEnter={e => e.target.style.color = '#1f2937'} onMouseLeave={e => e.target.style.color = '#9ca3af'}>Terms of Service</span>
-            <span style={{ cursor: 'pointer', transition: 'color 0.2s' }} onMouseEnter={e => e.target.style.color = '#1f2937'} onMouseLeave={e => e.target.style.color = '#9ca3af'}>Sustainability</span>
+        {/* BOTTOM DIVIDER */}
+        <div style={{ borderTop: '1px solid #374151', paddingTop: '30px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '20px', color: '#6b7280', fontSize: '14px' }}>
+          <div>© {currentYear} Odessey Travel. All rights reserved.</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            Built with <Heart size={14} color="#ef4444" fill="#ef4444" /> for modern explorers.
           </div>
         </div>
 
