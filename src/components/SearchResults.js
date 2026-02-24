@@ -324,12 +324,105 @@ const SearchResults = ({ searchQuery, searchResults }) => {
 export default SearchResults;
 */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, Calendar, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const SearchResults = ({ searchQuery, searchResults }) => {
   const navigate = useNavigate();
+  const [images, setImages] = useState({});
+
+
+
+
+  const fetchWikiImage = async (title) => {
+    if (!title) return null;
+    try {
+      const normalizeUrl = (src) => {
+        if (!src) return null;
+        if (src.startsWith('//')) return 'https:' + src;
+        return src;
+      };
+
+      // Helper: request pageimages for a specific title
+      const pageImageForTitle = async (t, endpoint = 'https://en.wikipedia.org/w/api.php') => {
+        const params = `origin=*&action=query&format=json&prop=pageimages&pithumbsize=800&titles=${encodeURIComponent(t)}`;
+        const res = await fetch(`${endpoint}?${params}`).then(r => r.json()).catch(() => ({}));
+        const pages = res.query?.pages;
+        const pageId = pages ? Object.keys(pages)[0] : null;
+        if (pageId && pageId !== '-1') {
+          const page = pages[pageId];
+          if (page.thumbnail?.source) return normalizeUrl(page.thumbnail.source);
+        }
+        return null;
+      };
+
+      // 1) Direct lookup on Wikipedia
+      let img = await pageImageForTitle(title, 'https://en.wikipedia.org/w/api.php');
+      if (img) return img;
+
+      // 2) Try the Wikivoyage site by exact title
+      img = await pageImageForTitle(title, 'https://en.wikivoyage.org/w/api.php');
+      if (img) return img;
+
+      // 3) Use search to find best matching Wikipedia page, then fetch image
+      const searchEndpoints = [
+        'https://en.wikipedia.org/w/api.php',
+        'https://en.wikivoyage.org/w/api.php'
+      ];
+
+      for (const endpoint of searchEndpoints) {
+        try {
+          const sParams = `origin=*&action=query&list=search&srsearch=${encodeURIComponent(title + ' India')}&srlimit=5&format=json`;
+          const sRes = await fetch(`${endpoint}?${sParams}`).then(r => r.json()).catch(() => ({}));
+          const hits = sRes.query?.search || [];
+          if (hits.length > 0) {
+            // try the top few matches for thumbnails
+            for (let i = 0; i < Math.min(hits.length, 3); i++) {
+              const candidate = hits[i].title;
+              const candImg = await pageImageForTitle(candidate, endpoint);
+              if (candImg) return candImg;
+            }
+          }
+        } catch (e) {
+          // ignore and continue
+        }
+      }
+
+      // 4) As a last attempt, try searching without the "India" suffix (some pages are named differently)
+      try {
+        const sParams = `origin=*&action=query&list=search&srsearch=${encodeURIComponent(title)}&srlimit=5&format=json`;
+        const sRes = await fetch(`https://en.wikipedia.org/w/api.php?${sParams}`).then(r => r.json()).catch(() => ({}));
+        const hits = sRes.query?.search || [];
+        for (let i = 0; i < Math.min(hits.length, 3); i++) {
+          const candImg = await pageImageForTitle(hits[i].title, 'https://en.wikipedia.org/w/api.php');
+          if (candImg) return candImg;
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      return null;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  // Fetch images for all results
+  useEffect(() => {
+    const loadImages = async () => {
+      const imageMap = {};
+      for (const result of searchResults) {
+        const img = await fetchWikiImage(result.name);
+        imageMap[result.name] = img || null;
+      }
+      setImages(imageMap);
+    };
+    
+    if (searchResults.length > 0) {
+      loadImages();
+    }
+  }, [searchResults]);
 
   // If no search query, show nothing
   if (!searchQuery || searchResults.length === 0) return null;
@@ -365,7 +458,7 @@ const SearchResults = ({ searchQuery, searchResults }) => {
               {/* IMAGE: Uses Unsplash fallback if result.img is missing */}
               <div style={{ height: '200px', width: '100%', overflow: 'hidden', backgroundColor: '#f3f4f6' }}>
                 <img 
-                  src={result.img || `https://source.unsplash.com/random/600x400?${result.name},india,travel`} 
+                  src={images[result.name] || 'https://source.unsplash.com/random/600x400?travel'} 
                   alt={result.name}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   onError={(e) => { e.target.src = 'https://source.unsplash.com/random/600x400?travel'; }}
