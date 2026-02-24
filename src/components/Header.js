@@ -757,7 +757,7 @@ const Header = () => {
       title: "Plan Your Trip", icon: Calendar,
       items: [
         { label: "Custom Trip Planner", href: "/plan", navIcon: Calendar },
-        { label: "Maps & Routes", href: "/plan", navIcon: Map }, // Newly Added
+        { label: "Maps & Routes", href: "/route-planner", navIcon: Map }, // Newly Added
         { label: "Vehicle Options", href: "/plan", navIcon: Car }, // Newly Added
         { label: "Other Services", href: "/plan", navIcon: LayoutGrid } // Newly Added
       ]

@@ -242,6 +242,7 @@ import LodgesPage from "./pages/LodgesPage";
 import ExperiencesPage from "./pages/ExperiencesPage";
 import MissionPage from "./pages/MissionPage";
 import AboutPage from "./pages/AboutPage";
+import RoutePlannerPage from "./pages/RoutePlannerPage";
 
 // 👇 NEW: ScrollToTop Helper Component
 const ScrollToTop = () => {
@@ -298,6 +299,7 @@ function App() {
 
           {/* NEW ROUTES FOR HEADER LINKS */}
           <Route path="/plan" element={<PlanTrip />} />
+          <Route path="/route-planner" element={<RoutePlannerPage />} />
           <Route path="/story" element={<StoriesPage />} />
           <Route path="/itinerary" element={<ItinerariesPage />} />
           <Route path="/lodges" element={<LodgesPage />} />
