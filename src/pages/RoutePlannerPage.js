@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Navigation, Plus, Trash2, ArrowRight, Clock, Camera, Leaf, Coffee, Compass, GripVertical, Map as MapIcon, CheckCircle2, Search } from 'lucide-react';
+import { MapPin, Navigation, Plus, Trash2, ArrowRight, Clock, Map as MapIcon, CheckCircle2, Search, Loader2, GripVertical, Camera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-// 👇 READS SECURELY FROM YOUR .env FILE
-// Note: If using Vite, change this to: import.meta.env.VITE_OLA_MAPS_API_KEY
-const OLA_MAPS_API_KEY = process.env.REACT_APP_OLA_MAPS_API_KEY;
+// 👇 Reads securely from your .env file
+const OLA_MAPS_API_KEY = process.env.REACT_APP_OLA_MAPS_API_KEY || ""; 
 
 const RoutePlannerPage = () => {
   const navigate = useNavigate();
@@ -13,128 +12,179 @@ const RoutePlannerPage = () => {
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingText, setLoadingText] = useState('');
+  
   const [itineraryStops, setItineraryStops] = useState([]);
   const [suggestedPlaces, setSuggestedPlaces] = useState([]);
   const [routeCoords, setRouteCoords] = useState({ start: null, end: null });
   
-  // Custom Stop State
   const [customStopName, setCustomStopName] = useState('');
   const [isFindingLocation, setIsFindingLocation] = useState(false);
 
-  // --- MAP & DRAG/DROP REFS ---
-  const mapRef = useRef(null);
+  // --- MAP REFS ---
+  const mapContainerRef = useRef(null);
   const mapInstance = useRef(null);
-  const olaMapsInstance = useRef(null);
   const markersRef = useRef([]); 
   const dragItem = useRef();
   const dragOverItem = useRef();
 
-  // --- DATABASE: MAJOR CITIES ---
-  const cityCoords = {
-    "delhi": { lat: 28.6139, lng: 77.2090 },
-    "jaipur": { lat: 26.9124, lng: 75.7873 },
-    "mumbai": { lat: 19.0760, lng: 72.8777 },
-    "bangalore": { lat: 12.9716, lng: 77.5946 },
-    "chennai": { lat: 13.0827, lng: 80.2707 },
-    "kolkata": { lat: 22.5726, lng: 88.3639 },
-    "ahmedabad": { lat: 23.0225, lng: 72.5714 },
-    "pune": { lat: 18.5204, lng: 73.8567 },
-    "agra": { lat: 27.1767, lng: 78.0081 },
-    "manali": { lat: 32.2396, lng: 77.1887 },
-    "goa": { lat: 15.2993, lng: 74.1240 },
-    "kochi": { lat: 9.9312, lng: 76.2673 },
-    "udaipur": { lat: 24.5854, lng: 73.7125 },
-    "chandigarh": { lat: 30.7333, lng: 76.7794 }
-  };
-
-  // --- EXPANDED DATABASE: REAL INDIAN PLACES ---
-  const placesDatabase = [
-    { id: 1, name: "Neemrana Fort", lat: 27.99, lng: 76.38, type: "Heritage", time: "2 Hours", icon: Camera, img: "https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=400&q=80", desc: "15th-century heritage palace perfect for a royal lunch stop." },
-    { id: 2, name: "Amrik Sukhdev Dhaba", lat: 29.03, lng: 77.07, type: "Food", time: "1 Hour", icon: Coffee, img: "https://images.unsplash.com/photo-1605814545086-455b8beffca2?auto=format&fit=crop&w=400&q=80", desc: "Legendary highway stop famous for hot tandoori parathas." },
-    { id: 3, name: "Sanchi Stupa", lat: 23.48, lng: 77.73, type: "Heritage", time: "2 Hours", icon: Compass, img: "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=400&q=80", desc: "Ancient Buddhist complex commissioned by Emperor Ashoka." },
-    { id: 4, name: "Lonavala Viewpoint", lat: 18.74, lng: 73.40, type: "Nature", time: "1.5 Hours", icon: Leaf, img: "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?auto=format&fit=crop&w=400&q=80", desc: "Misty valleys and cascading waterfalls along the expressway." },
-    { id: 5, name: "Athirappilly Falls", lat: 10.28, lng: 76.56, type: "Nature", time: "2.5 Hours", icon: Leaf, img: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=400&q=80", desc: "The 'Niagara of India'. A spectacular 80-foot waterfall." },
-    { id: 6, name: "Ajanta Caves", lat: 20.55, lng: 75.70, type: "Heritage", time: "3 Hours", icon: Camera, img: "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=400&q=80", desc: "Ancient rock-cut Buddhist cave monuments." },
-    { id: 7, name: "Mysore Palace", lat: 12.30, lng: 76.65, type: "Heritage", time: "2 Hours", icon: Camera, img: "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=400&q=80", desc: "A magnificent royal palace known for its intricate architecture." },
-    { id: 8, name: "Karnala Bird Sanctuary", lat: 18.88, lng: 73.11, type: "Wildlife", time: "2 Hours", icon: Leaf, img: "https://images.unsplash.com/photo-1550155416-8316dfa99f18?auto=format&fit=crop&w=400&q=80", desc: "Home to over 150 species of birds. A peaceful shaded trek." },
-    { id: 9, name: "Kumbhalgarh Fort", lat: 25.14, lng: 73.58, type: "Heritage", time: "2.5 Hours", icon: Compass, img: "https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=400&q=80", desc: "Features the second longest continuous wall in the world." },
-    { id: 10, name: "Bhimbetka Rock Shelters", lat: 22.93, lng: 77.61, type: "Culture", time: "1.5 Hours", icon: Camera, img: "https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=400&q=80", desc: "Prehistoric rock paintings dating back 30,000 years." },
-    { id: 11, name: "Hampi Ruins", lat: 15.33, lng: 76.46, type: "Heritage", time: "4 Hours", icon: Compass, img: "https://images.unsplash.com/photo-1600676435306-03fcb59ba5b1?auto=format&fit=crop&w=400&q=80", desc: "Explore the captivating ruins of the Vijayanagara Empire." },
-    { id: 12, name: "Taj Mahal Viewpoint", lat: 27.17, lng: 78.04, type: "Heritage", time: "2 Hours", icon: Camera, img: "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=400&q=80", desc: "Iconic monument of love. A must-stop on the Northern circuit." }
+  const placeholderImages = [
+    "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=400&q=80",
+    "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=400&q=80",
+    "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=400&q=80",
+    "https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=400&q=80",
+    "https://images.unsplash.com/photo-1550155416-8316dfa99f18?auto=format&fit=crop&w=400&q=80"
   ];
 
-  // --- INITIALIZE OLA MAPS ---
+  // --- ROBUST GEOCODING HELPER ---
+  // Tries Ola Maps first, falls back to OpenStreetMap if Ola fails or key is missing
+  const getCoordinates = async (placeName) => {
+    try {
+      if (OLA_MAPS_API_KEY) {
+        const res = await fetch(`https://api.olamaps.io/places/v1/geocode?address=${encodeURIComponent(placeName)}&api_key=${OLA_MAPS_API_KEY}`);
+        const data = await res.json();
+        if (data?.geocodingResults?.[0]?.geometry?.location) {
+          return {
+            lat: data.geocodingResults[0].geometry.location.lat,
+            lng: data.geocodingResults[0].geometry.location.lng,
+            name: data.geocodingResults[0].name || placeName
+          };
+        }
+      }
+      // Fallback to free OpenStreetMap API
+      const osmRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(placeName)}`);
+      const osmData = await osmRes.json();
+      if (osmData && osmData.length > 0) {
+        return { lat: parseFloat(osmData[0].lat), lng: parseFloat(osmData[0].lon), name: osmData[0].name || placeName };
+      }
+    } catch (e) { console.error("Geocoding failed:", e); }
+    return null;
+  };
+
+  // --- 100% DYNAMIC SEARCH: GEOCODING & RECOMMENDATIONS ---
+  const handleSearchRoutes = async (e) => {
+    e.preventDefault();
+    if (!origin || !destination) return;
+
+    setIsLoading(true);
+    setIsSearching(false);
+    setItineraryStops([]);
+
+    try {
+      setLoadingText('Locating Origin...');
+      const startLoc = await getCoordinates(origin);
+      
+      setLoadingText('Locating Destination...');
+      const endLoc = await getCoordinates(destination);
+
+      if (!startLoc || !endLoc) {
+        alert("Could not find exact coordinates for those cities. Try adding a state name.");
+        setIsLoading(false);
+        return;
+      }
+
+      setRouteCoords({ start: startLoc, end: endLoc });
+
+      // 👇 DYNAMIC WIKIPEDIA API: Finds real monuments/places near the destination!
+      setLoadingText('Finding real places...');
+      const wikiRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gsradius=10000&gscoord=${endLoc.lat}|${endLoc.lng}&format=json&origin=*`);
+      const wikiData = await wikiRes.json();
+
+      if (wikiData?.query?.geosearch?.length > 0) {
+        // Map Wikipedia results to our UI format
+        const dynamicPlaces = wikiData.query.geosearch.slice(0, 5).map((place, index) => ({
+          id: place.pageid,
+          name: place.title,
+          lat: place.lat,
+          lng: place.lon,
+          type: "Landmark",
+          time: "1-2 Hours",
+          icon: Camera,
+          desc: `A notable real-world landmark located exactly at these coordinates.`,
+          img: placeholderImages[index % placeholderImages.length]
+        }));
+        setSuggestedPlaces(dynamicPlaces);
+      } else {
+        setSuggestedPlaces([]);
+      }
+
+      setIsSearching(true);
+    } catch (error) {
+      console.error("Search Error:", error);
+      alert("Error generating route.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // --- INITIALIZE RELIABLE MAPLIBRE + OLA MAPS ---
   useEffect(() => {
     if (!isSearching) return;
 
-    if (!OLA_MAPS_API_KEY) {
-      console.error("Missing API Key: Please ensure REACT_APP_OLA_MAPS_API_KEY is set in your .env file.");
-    }
+    const initializeMap = () => {
+      if (mapInstance.current || !mapContainerRef.current) return;
 
-    const loadOlaMap = () => {
-      if (!mapRef.current || mapInstance.current) return;
-      
-      try {
-        const olaMaps = new window.OlaMapsWebSDK.OlaMaps({ apiKey: OLA_MAPS_API_KEY || '' });
-        olaMapsInstance.current = olaMaps;
-        
-        const map = olaMaps.init({
-          style: "https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json",
-          container: mapRef.current,
-          center: [78.9629, 20.5937], 
-          zoom: 4
-        });
-        
+      const map = new window.maplibregl.Map({
+        container: mapContainerRef.current,
+        style: `https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json`,
+        center: [routeCoords.start.lng, routeCoords.start.lat],
+        zoom: 5,
+        attributionControl: false,
+        // 👇 CRITICAL FIX: Intercepts map tile requests to inject the Ola API key
+        transformRequest: (url) => {
+          if (url.includes('olamaps.io')) {
+            return { url: `${url}${url.includes('?') ? '&' : '?'}api_key=${OLA_MAPS_API_KEY}` };
+          }
+          return { url };
+        }
+      });
+
+      map.on('load', () => {
         mapInstance.current = map;
-
-        map.on('load', () => {
-          updateMapEntities();
-        });
-
-      } catch (error) {
-        console.error("Error loading Ola Maps:", error);
-      }
+        updateMapEntities();
+      });
     };
 
-    if (!window.OlaMapsWebSDK) {
+    if (!window.maplibregl) {
       const link = document.createElement('link');
-      link.href = "https://olamaps.github.io/olamaps-web-sdk/ola-maps-web-sdk.css";
-      link.rel = "stylesheet";
+      link.href = 'https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.css';
+      link.rel = 'stylesheet';
       document.head.appendChild(link);
 
       const script = document.createElement('script');
-      script.src = "https://olamaps.github.io/olamaps-web-sdk/ola-maps-web-sdk.umd.js";
+      script.src = 'https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.js';
       script.async = true;
-      script.onload = loadOlaMap;
+      script.onload = initializeMap;
       document.head.appendChild(script);
     } else {
-      loadOlaMap();
+      initializeMap();
     }
   }, [isSearching]);
 
   // --- UPDATE MAP PINS & ROUTE ---
   useEffect(() => {
-    if (mapInstance.current && mapInstance.current.isStyleLoaded()) {
+    if (mapInstance.current && window.maplibregl) {
       updateMapEntities();
     }
   }, [routeCoords, itineraryStops]);
 
   const updateMapEntities = () => {
     const map = mapInstance.current;
-    const olaMaps = olaMapsInstance.current;
-    if (!map || !olaMaps || !routeCoords.start || !routeCoords.end) return;
+    if (!map || !routeCoords.start || !routeCoords.end) return;
 
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
     const waypoints = []; 
 
+    // Custom Circular HTML Marker
     const createMarkerElement = (name, color) => {
       const el = document.createElement('div');
       el.innerHTML = `
         <div style="position: relative; display: flex; align-items: center; justify-content: center; transform: translate(-50%, -50%);">
-          <div style="width: 14px; height: 14px; background-color: ${color}; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); z-index: 2;"></div>
-          <div style="position: absolute; left: 20px; white-space: nowrap; font-family: system-ui; font-size: 13px; font-weight: 700; color: #111827; text-shadow: 1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white; z-index: 1;">
+          <div style="width: 16px; height: 16px; background-color: ${color}; border-radius: 50%; border: 3px solid white; box-shadow: 0 3px 8px rgba(0,0,0,0.4); z-index: 2;"></div>
+          <div style="position: absolute; left: 22px; white-space: nowrap; font-family: system-ui; font-size: 13px; font-weight: 800; color: #111827; text-shadow: 1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white; z-index: 1;">
             ${name}
           </div>
         </div>
@@ -142,159 +192,89 @@ const RoutePlannerPage = () => {
       return el;
     };
 
-    const startCoordArr = [routeCoords.start.lng, routeCoords.start.lat];
-    waypoints.push(startCoordArr);
-    const startMarker = olaMaps.addMarker({ element: createMarkerElement(origin.toUpperCase(), '#111827') })
-      .setLngLat(startCoordArr)
-      .addTo(map);
+    // 1. Origin (Black)
+    const startCoord = [routeCoords.start.lng, routeCoords.start.lat];
+    waypoints.push(startCoord);
+    const startMarker = new window.maplibregl.Marker({ element: createMarkerElement(origin.toUpperCase(), '#111827') })
+      .setLngLat(startCoord).addTo(map);
     markersRef.current.push(startMarker);
 
+    // 2. Stops (Green)
     itineraryStops.forEach((stop) => {
-      const stopCoordArr = [stop.lng, stop.lat];
-      waypoints.push(stopCoordArr);
-      const stopMarker = olaMaps.addMarker({ element: createMarkerElement(stop.name, '#16a34a') })
-        .setLngLat(stopCoordArr)
-        .addTo(map);
+      const stopCoord = [stop.lng, stop.lat];
+      waypoints.push(stopCoord);
+      const stopMarker = new window.maplibregl.Marker({ element: createMarkerElement(stop.name, '#16a34a') })
+        .setLngLat(stopCoord).addTo(map);
       markersRef.current.push(stopMarker);
     });
 
-    const endCoordArr = [routeCoords.end.lng, routeCoords.end.lat];
-    waypoints.push(endCoordArr);
-    const endMarker = olaMaps.addMarker({ element: createMarkerElement(destination.toUpperCase(), '#ea580c') })
-      .setLngLat(endCoordArr)
-      .addTo(map);
+    // 3. Destination (Orange)
+    const endCoord = [routeCoords.end.lng, routeCoords.end.lat];
+    waypoints.push(endCoord);
+    const endMarker = new window.maplibregl.Marker({ element: createMarkerElement(destination.toUpperCase(), '#ea580c') })
+      .setLngLat(endCoord).addTo(map);
     markersRef.current.push(endMarker);
 
+    // 4. Draw Route Polyline
     if (map.getSource('route')) {
-      map.getSource('route').setData({
-        type: 'Feature',
-        properties: {},
-        geometry: { type: 'LineString', coordinates: waypoints }
-      });
+      map.getSource('route').setData({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: waypoints } });
     } else {
-      map.addSource('route', {
-        type: 'geojson',
-        data: {
-          type: 'Feature',
-          properties: {},
-          geometry: { type: 'LineString', coordinates: waypoints }
-        }
-      });
+      map.addSource('route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: waypoints } } });
       map.addLayer({
-        id: 'route',
-        type: 'line',
-        source: 'route',
-        layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: {
-          'line-color': '#16a34a',
-          'line-width': 4,
-          'line-dasharray': [2, 2] 
-        }
+        id: 'route', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': '#16a34a', 'line-width': 4, 'line-dasharray': [2, 2] }
       });
     }
 
-    if (window.OlaMapsWebSDK) {
-      const bounds = waypoints.reduce((b, coord) => {
-        return b.extend(coord);
-      }, new window.OlaMapsWebSDK.LngLatBounds(waypoints[0], waypoints[0]));
-      
-      map.fitBounds(bounds, { padding: 80, maxZoom: 12 });
-    }
+    // 5. Fit Map Bounds
+    const bounds = new window.maplibregl.LngLatBounds(waypoints[0], waypoints[0]);
+    waypoints.forEach(coord => bounds.extend(coord));
+    map.fitBounds(bounds, { padding: 80, maxZoom: 12 });
   };
 
-
-  // --- DYNAMIC SEARCH LOGIC ---
-  const handleSearchRoutes = (e) => {
-    e.preventDefault();
-    if (!origin || !destination) return;
-
-    const startKey = origin.toLowerCase().trim();
-    const endKey = destination.toLowerCase().trim();
-
-    const startCoord = cityCoords[startKey] || { lat: 28.61, lng: 77.20 }; 
-    const endCoord = cityCoords[endKey] || { lat: 19.07, lng: 72.87 };
-    setRouteCoords({ start: startCoord, end: endCoord });
-
-    const midLat = (startCoord.lat + endCoord.lat) / 2;
-    const midLng = (startCoord.lng + endCoord.lng) / 2;
-
-    const sortedPlaces = [...placesDatabase].sort((a, b) => {
-      const distA = Math.hypot(a.lat - midLat, a.lng - midLng);
-      const distB = Math.hypot(b.lat - midLat, b.lng - midLng);
-      return distA - distB;
-    });
-
-    setSuggestedPlaces(sortedPlaces.slice(0, 5));
-    setItineraryStops([]); 
-    setIsSearching(true);
-  };
-
+  // --- TIMELINE CONTROLS ---
   const addStop = (stop) => {
-    if (!itineraryStops.find(s => s.id === stop.id)) {
-      setItineraryStops([...itineraryStops, stop]);
-    }
+    if (!itineraryStops.find(s => s.id === stop.id)) setItineraryStops([...itineraryStops, stop]);
   };
+  const removeStop = (id) => setItineraryStops(itineraryStops.filter(s => s.id !== id));
 
-  const removeStop = (id) => {
-    setItineraryStops(itineraryStops.filter(s => s.id !== id));
-  };
-
-  // --- OLA MAPS EXACT COORDINATE GEOCODING ---
+  // --- EXACT COORDINATE CUSTOM SEARCH ---
   const handleAddCustomStop = async (e) => {
     e.preventDefault();
     if (!customStopName.trim()) return;
 
-    if (!OLA_MAPS_API_KEY) {
-      alert("Error: Missing OLA_MAPS_API_KEY. Please add it to your .env file.");
-      return;
-    }
-
     setIsFindingLocation(true);
 
     try {
-      const response = await fetch(`https://api.olamaps.io/places/v1/geocode?address=${encodeURIComponent(customStopName + ", India")}&api_key=${OLA_MAPS_API_KEY}`);
-      const data = await response.json();
+      const locationData = await getCoordinates(customStopName);
 
-      if (data?.geocodingResults && data.geocodingResults.length > 0) {
-        const exactLocation = data.geocodingResults[0];
-        const exactLat = exactLocation.geometry.location.lat;
-        const exactLng = exactLocation.geometry.location.lng;
-        const officialName = exactLocation.name || customStopName; 
-
+      if (locationData) {
         const customStop = {
           id: Date.now(), 
-          name: officialName, 
-          lat: exactLat,    
-          lng: exactLng,     
+          name: locationData.name, 
+          lat: locationData.lat,    
+          lng: locationData.lng,     
           type: "Custom Stop",
           time: "Flexible",
           icon: MapPin,
-          desc: "A personalized location added via search.",
-          img: "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=400&q=80"
+          desc: "A personalized location added by you.",
+          img: placeholderImages[0]
         };
-
         setItineraryStops([...itineraryStops, customStop]);
         setCustomStopName(''); 
       } else {
-        alert(`We couldn't find exact coordinates for "${customStopName}". Try adding a city name (e.g. "Taj Mahal, Agra").`);
+        alert(`Could not find "${customStopName}". Try adding a city name (e.g. "Juhu Beach, Mumbai").`);
       }
     } catch (error) {
-      console.error("Geocoding Error:", error);
-      alert("There was an error connecting to the map servers.");
+      console.error("Error:", error);
     } finally {
       setIsFindingLocation(false);
     }
   };
 
-  // --- DRAG AND DROP NATIVE HTML5 ---
-  const handleDragStart = (e, position) => {
-    dragItem.current = position;
-    e.target.style.opacity = 0.5;
-  };
-  const handleDragEnter = (e, position) => {
-    e.preventDefault();
-    dragOverItem.current = position;
-  };
+  // --- DRAG AND DROP ---
+  const handleDragStart = (e, position) => { dragItem.current = position; e.target.style.opacity = 0.5; };
+  const handleDragEnter = (e, position) => { e.preventDefault(); dragOverItem.current = position; };
   const handleDrop = (e) => {
     e.preventDefault();
     const copyListItems = [...itineraryStops];
@@ -302,29 +282,18 @@ const RoutePlannerPage = () => {
     copyListItems.splice(dragItem.current, 1);
     copyListItems.splice(dragOverItem.current, 0, dragItemContent);
     setItineraryStops(copyListItems);
-    dragItem.current = null;
-    dragOverItem.current = null;
-    e.target.style.opacity = 1;
+    dragItem.current = null; dragOverItem.current = null; e.target.style.opacity = 1;
   };
-  const handleDragEnd = (e) => {
-    e.target.style.opacity = 1;
-  };
+  const handleDragEnd = (e) => { e.target.style.opacity = 1; };
 
   const handleFinalize = () => {
-    navigate('/plan', { 
-      state: { 
-        prefillPackage: { 
-          title: `Custom Drive: ${origin} to ${destination}`,
-          location: `${origin} to ${destination}` 
-        } 
-      } 
-    });
+    navigate('/plan', { state: { prefillPackage: { title: `Custom Drive: ${origin} to ${destination}`, location: `${origin} to ${destination}` } } });
   };
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', fontFamily: 'system-ui, -apple-system, sans-serif', paddingBottom: '80px', overflowX: 'hidden' }}>
       
-      {/* 1. HERO & SEARCH SECTION */}
+      {/* 1. HERO & SEARCH */}
       <div style={{ position: 'relative', height: isSearching ? '25vh' : '50vh', minHeight: '220px', backgroundImage: 'url(https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1920&q=80)', backgroundSize: 'cover', backgroundPosition: 'center', transition: 'all 0.5s ease-in-out' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(17, 24, 39, 0.6), rgba(17, 24, 39, 0.95))' }} />
         
@@ -334,25 +303,23 @@ const RoutePlannerPage = () => {
           </h1>
           {!isSearching && (
             <p style={{ fontSize: '18px', color: 'rgba(255,255,255,0.9)', textAlign: 'center', marginBottom: '40px' }}>
-              Enter your starting point and destination. We'll plot the route and dynamically find hidden gems along the way.
+              Enter your starting point and destination. We'll plot the route and dynamically find real landmarks along the way.
             </p>
           )}
 
           <form onSubmit={handleSearchRoutes} style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', backgroundColor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)', padding: '15px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.2)', marginTop: isSearching ? '10px' : '0' }}>
             <div style={{ flex: '1 1 250px', position: 'relative' }}>
               <Navigation size={20} color="#9ca3af" style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input type="text" placeholder="Start (e.g. Delhi)" value={origin} onChange={(e)=>setOrigin(e.target.value)} required style={{ width: '100%', boxSizing: 'border-box', padding: '16px 16px 16px 45px', borderRadius: '12px', border: 'none', outline: 'none', fontSize: '15px', fontWeight: 'bold' }} />
+              <input type="text" placeholder="Start (e.g. Delhi)" value={origin} onChange={(e)=>setOrigin(e.target.value)} required disabled={isLoading} style={{ width: '100%', boxSizing: 'border-box', padding: '16px 16px 16px 45px', borderRadius: '12px', border: 'none', outline: 'none', fontSize: '15px', fontWeight: 'bold' }} />
             </div>
-            
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 10px', color: 'white' }}><ArrowRight size={20} /></div>
-
             <div style={{ flex: '1 1 250px', position: 'relative' }}>
               <MapPin size={20} color="#16a34a" style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input type="text" placeholder="End (e.g. Ahmedabad)" value={destination} onChange={(e)=>setDestination(e.target.value)} required style={{ width: '100%', boxSizing: 'border-box', padding: '16px 16px 16px 45px', borderRadius: '12px', border: 'none', outline: 'none', fontSize: '15px', fontWeight: 'bold' }} />
+              <input type="text" placeholder="End (e.g. Ahmedabad)" value={destination} onChange={(e)=>setDestination(e.target.value)} required disabled={isLoading} style={{ width: '100%', boxSizing: 'border-box', padding: '16px 16px 16px 45px', borderRadius: '12px', border: 'none', outline: 'none', fontSize: '15px', fontWeight: 'bold' }} />
             </div>
 
-            <button type="submit" style={{ flex: '0 1 auto', padding: '0 30px', borderRadius: '12px', backgroundColor: '#16a34a', color: 'white', fontWeight: 'bold', fontSize: '16px', border: 'none', cursor: 'pointer', transition: 'background 0.2s', height: '54px' }} onMouseEnter={e=>e.currentTarget.style.backgroundColor='#15803d'} onMouseLeave={e=>e.currentTarget.style.backgroundColor='#16a34a'}>
-              Map Route
+            <button type="submit" disabled={isLoading} style={{ flex: '0 1 auto', padding: '0 30px', borderRadius: '12px', backgroundColor: '#16a34a', color: 'white', fontWeight: 'bold', fontSize: '16px', border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', height: '54px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {isLoading ? <><Loader2 size={18} className="animate-spin" /> {loadingText}</> : 'Map Route'}
             </button>
           </form>
         </div>
@@ -362,9 +329,8 @@ const RoutePlannerPage = () => {
       {isSearching && (
         <div style={{ maxWidth: '1400px', margin: '40px auto', padding: '0 20px', display: 'grid', gridTemplateColumns: 'minmax(300px, 1.1fr) minmax(300px, 1fr) minmax(350px, 1.1fr)', gap: '30px', animation: 'fadeIn 0.5s ease-out' }}>
           
-          {/* COLUMN 1: TIMELINE & CUSTOM SEARCH */}
+          {/* COLUMN 1: TIMELINE */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', position: 'sticky', top: '100px', height: 'fit-content' }}>
-            
             <div style={{ backgroundColor: 'white', borderRadius: '24px', padding: '30px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb' }}>
               <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#111827', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Clock color="#16a34a" /> Route Timeline
@@ -372,7 +338,6 @@ const RoutePlannerPage = () => {
               <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '30px', fontStyle: 'italic' }}>Drag and drop stops to reorder your trip.</p>
 
               <div style={{ position: 'relative', paddingLeft: '20px', borderLeft: '3px dashed #d1d5db', display: 'flex', flexDirection: 'column', gap: '25px' }}>
-                
                 <div style={{ position: 'relative' }}>
                   <div style={{ position: 'absolute', left: '-30px', top: '2px', width: '16px', height: '16px', borderRadius: '50%', backgroundColor: '#111827', border: '3px solid white' }} />
                   <h4 style={{ fontSize: '12px', color: '#6b7280', fontWeight: '700', textTransform: 'uppercase' }}>Start</h4>
@@ -380,10 +345,7 @@ const RoutePlannerPage = () => {
                 </div>
 
                 {itineraryStops.map((stop, index) => (
-                  <div 
-                    key={stop.id} draggable onDragStart={(e) => handleDragStart(e, index)} onDragEnter={(e) => handleDragEnter(e, index)} onDragEnd={handleDragEnd} onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}
-                    style={{ position: 'relative', backgroundColor: '#f0fdf4', padding: '12px', borderRadius: '12px', border: '1px solid #bbf7d0', display: 'flex', gap: '10px', alignItems: 'center', cursor: 'grab' }}
-                  >
+                  <div key={stop.id} draggable onDragStart={(e) => handleDragStart(e, index)} onDragEnter={(e) => handleDragEnter(e, index)} onDragEnd={handleDragEnd} onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} style={{ position: 'relative', backgroundColor: '#f0fdf4', padding: '12px', borderRadius: '12px', border: '1px solid #bbf7d0', display: 'flex', gap: '10px', alignItems: 'center', cursor: 'grab' }}>
                     <div style={{ position: 'absolute', left: '-28px', top: '15px', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#16a34a', border: '3px solid white' }} />
                     <div style={{ cursor: 'grab', color: '#9ca3af' }}><GripVertical size={20} /></div>
                     <div style={{ flex: 1 }}>
@@ -399,7 +361,6 @@ const RoutePlannerPage = () => {
                   <h4 style={{ fontSize: '12px', color: '#6b7280', fontWeight: '700', textTransform: 'uppercase' }}>End</h4>
                   <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', textTransform: 'capitalize' }}>{destination}</p>
                 </div>
-
               </div>
 
               <button onClick={handleFinalize} disabled={itineraryStops.length === 0} style={{ width: '100%', padding: '16px', borderRadius: '12px', backgroundColor: itineraryStops.length > 0 ? '#111827' : '#e5e7eb', color: itineraryStops.length > 0 ? 'white' : '#9ca3af', fontSize: '16px', fontWeight: 'bold', border: 'none', cursor: itineraryStops.length > 0 ? 'pointer' : 'not-allowed', marginTop: '40px', transition: 'all 0.3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
@@ -409,91 +370,56 @@ const RoutePlannerPage = () => {
 
             <div style={{ backgroundColor: 'white', borderRadius: '24px', padding: '25px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb' }}>
               <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#111827', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Search size={18} color="#0284c7" /> Search Exact Location
+                <Search size={18} color="#0284c7" /> Add a Custom Stop
               </h3>
               <form onSubmit={handleAddCustomStop} style={{ display: 'flex', gap: '10px' }}>
-                <input 
-                  type="text" 
-                  placeholder="E.g. Juhu Beach..." 
-                  value={customStopName} 
-                  onChange={(e) => setCustomStopName(e.target.value)} 
-                  disabled={isFindingLocation}
-                  style={{ flex: 1, padding: '12px 15px', borderRadius: '10px', border: '1px solid #d1d5db', outline: 'none', fontSize: '14px', minWidth: '0' }}
-                />
+                <input type="text" placeholder="Search exact place..." value={customStopName} onChange={(e) => setCustomStopName(e.target.value)} disabled={isFindingLocation} style={{ flex: 1, padding: '12px 15px', borderRadius: '10px', border: '1px solid #d1d5db', outline: 'none', fontSize: '14px', minWidth: '0' }} />
                 <button type="submit" disabled={isFindingLocation} style={{ padding: '0 15px', borderRadius: '10px', backgroundColor: '#0284c7', color: 'white', fontWeight: 'bold', border: 'none', cursor: isFindingLocation ? 'not-allowed' : 'pointer' }}>
-                  {isFindingLocation ? 'Locating...' : 'Plot on Map'}
+                  {isFindingLocation ? <Loader2 size={16} className="animate-spin" /> : 'Add'}
                 </button>
               </form>
-              {!OLA_MAPS_API_KEY && (
-                <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '10px' }}>*API Key missing in .env file.</p>
-              )}
             </div>
-
           </div>
 
-          {/* COLUMN 2: OLA MAP WIDGET */}
+          {/* COLUMN 2: RELIABLE MAPLIBRE + OLA TILE WIDGET */}
           <div style={{ backgroundColor: '#e0f2fe', borderRadius: '24px', overflow: 'hidden', position: 'sticky', top: '100px', height: 'calc(100vh - 150px)', minHeight: '500px', border: '1px solid #bae6fd', boxShadow: 'inset 0 0 50px rgba(0,0,0,0.05)' }}>
-            <div ref={mapRef} style={{ width: '100%', height: '100%' }}>
-              {!OLA_MAPS_API_KEY && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#ef4444', fontWeight: 'bold', textAlign: 'center', padding: '20px' }}>No API Key Provided.<br/>Please add REACT_APP_OLA_MAPS_API_KEY to your .env file.</div>}
+            <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}>
+              {!window.maplibregl && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#0284c7', fontWeight: 'bold', textAlign: 'center', padding: '20px' }}>Loading Map Engine...</div>}
             </div>
             <div style={{ position: 'absolute', bottom: '20px', left: '20px', backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(5px)', padding: '10px 15px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 'bold', color: '#1f2937', zIndex: 30 }}>
               <MapIcon size={18} color="#0284c7" /> Powered by Ola Maps
             </div>
           </div>
 
-          {/* COLUMN 3: CIRCULAR / PILL RECOMMENDATIONS */}
+          {/* COLUMN 3: DYNAMIC PILL RECOMMENDATIONS */}
           <div style={{ overflowY: 'auto', paddingRight: '10px' }} className="hide-scrollbar">
             <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#111827', marginBottom: '5px' }}>Route Suggestions</h2>
             <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '25px', textTransform: 'capitalize' }}>
-              Found {suggestedPlaces.length} places near {origin} & {destination}.
+              Found {suggestedPlaces.length} attractions near {destination}.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              {suggestedPlaces.map((rec) => {
+              {suggestedPlaces.length > 0 ? suggestedPlaces.map((rec) => {
                 const isAdded = itineraryStops.find(s => s.id === rec.id);
                 return (
-                  <div 
-                    key={rec.id} 
-                    style={{ 
-                      backgroundColor: 'white', borderRadius: '50px', padding: '10px', 
-                      display: 'flex', alignItems: 'center', gap: '15px', 
-                      border: isAdded ? '2px solid #16a34a' : '1px solid #e5e7eb', 
-                      boxShadow: '0 4px 15px rgba(0,0,0,0.03)', transition: 'all 0.2s', 
-                      position: 'relative' 
-                    }}
-                  >
+                  <div key={rec.id} style={{ backgroundColor: 'white', borderRadius: '50px', padding: '10px', display: 'flex', alignItems: 'center', gap: '15px', border: isAdded ? '2px solid #16a34a' : '1px solid #e5e7eb', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', transition: 'all 0.2s' }}>
                     <div style={{ width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: '2px solid #f3f4f6' }}>
                       <img src={rec.img} alt={rec.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
-
                     <div style={{ flex: 1, overflow: 'hidden' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#6b7280', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>
-                        <rec.icon size={12} /> {rec.type}
-                      </div>
-                      <h4 style={{ fontSize: '15px', fontWeight: 'bold', color: '#111827', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {rec.name}
-                      </h4>
-                      <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        {rec.desc}
-                      </p>
+                      <h4 style={{ fontSize: '15px', fontWeight: 'bold', color: '#111827', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rec.name}</h4>
+                      <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{rec.desc}</p>
                     </div>
-                    
-                    <button 
-                      onClick={() => isAdded ? removeStop(rec.id) : addStop(rec)} 
-                      title={isAdded ? "Remove from Route" : "Add to Route"}
-                      style={{ 
-                        width: '45px', height: '45px', borderRadius: '50%', flexShrink: 0, 
-                        border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                        transition: 'all 0.2s', marginRight: '5px',
-                        backgroundColor: isAdded ? '#f0fdf4' : '#f3f4f6', 
-                        color: isAdded ? '#15803d' : '#374151' 
-                      }}
-                    >
+                    <button onClick={() => isAdded ? removeStop(rec.id) : addStop(rec)} title={isAdded ? "Remove" : "Add"} style={{ width: '45px', height: '45px', borderRadius: '50%', flexShrink: 0, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', marginRight: '5px', backgroundColor: isAdded ? '#f0fdf4' : '#f3f4f6', color: isAdded ? '#15803d' : '#374151' }}>
                       {isAdded ? <CheckCircle2 size={22} /> : <Plus size={22} />}
                     </button>
                   </div>
                 )
-              })}
+              }) : (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280', backgroundColor: 'white', borderRadius: '20px', border: '1px dashed #d1d5db' }}>
+                  No automatic suggestions found. Use the search box!
+                </div>
+              )}
             </div>
           </div>
 
@@ -502,12 +428,11 @@ const RoutePlannerPage = () => {
 
       {/* Global Styles */}
       <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .animate-spin { animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
       `}</style>
     </div>
   );
