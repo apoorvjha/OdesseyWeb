@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Navigation, Plus, Trash2, ArrowRight, Clock, Map as MapIcon, CheckCircle2, Search, Loader2, GripVertical, Camera } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { MapPin, Navigation, Plus, Trash2, ArrowRight, Clock, Map as MapIcon, CheckCircle2, Search, Loader2, GripVertical, Camera, Layers } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-// 👇 Reads securely from your .env file
 const OLA_MAPS_API_KEY = process.env.REACT_APP_OLA_MAPS_API_KEY || ""; 
 
 const RoutePlannerPage = () => {
@@ -13,22 +12,49 @@ const RoutePlannerPage = () => {
   const [destination, setDestination] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSuggesting, setIsSuggesting] = useState(false); 
   const [loadingText, setLoadingText] = useState('');
   
   const [itineraryStops, setItineraryStops] = useState([]);
   const [suggestedPlaces, setSuggestedPlaces] = useState([]);
   const [routeCoords, setRouteCoords] = useState({ start: null, end: null });
   
+  const [routeLegs, setRouteLegs] = useState([]);
+  
   const [customStopName, setCustomStopName] = useState('');
   const [isFindingLocation, setIsFindingLocation] = useState(false);
+
+  // --- MAP STYLES & LAYOUT STATE ---
+  const [currentMapStyle, setCurrentMapStyle] = useState('street');
+
+  const mapLayouts = {
+    street: {
+      version: 8,
+      sources: { 'osm-tiles': { type: 'raster', tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, attribution: '© OpenStreetMap' } },
+      layers: [{ id: 'osm-tiles-layer', type: 'raster', source: 'osm-tiles', minzoom: 0, maxzoom: 19 }]
+    },
+    satellite: {
+      version: 8,
+      sources: { 'esri-sat': { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256, attribution: '© Esri World Imagery' } },
+      layers: [{ id: 'esri-sat-layer', type: 'raster', source: 'esri-sat', minzoom: 0, maxzoom: 19 }]
+    },
+    terrain: {
+      version: 8,
+      sources: { 'topo-tiles': { type: 'raster', tiles: ['https://a.tile.opentopomap.org/{z}/{x}/{y}.png'], tileSize: 256, attribution: '© OpenTopoMap' } },
+      layers: [{ id: 'topo-tiles-layer', type: 'raster', source: 'topo-tiles', minzoom: 0, maxzoom: 17 }]
+    }
+  };
 
   // --- MAP REFS ---
   const mapContainerRef = useRef(null);
   const mapInstance = useRef(null);
   const markersRef = useRef([]); 
+  const routeGeometryRef = useRef(null); 
+  
   const dragItem = useRef();
   const dragOverItem = useRef();
 
+  // Used only if Wikipedia doesn't have an image for a specific location
   const placeholderImages = [
     "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=400&q=80",
     "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=400&q=80",
@@ -37,8 +63,18 @@ const RoutePlannerPage = () => {
     "https://images.unsplash.com/photo-1550155416-8316dfa99f18?auto=format&fit=crop&w=400&q=80"
   ];
 
+  // --- HELPER FUNCTIONS ---
+  const addStop = (stop) => {
+    if (!itineraryStops.find(s => s.id === stop.id)) {
+      setItineraryStops([...itineraryStops, stop]);
+    }
+  };
+
+  const removeStop = (id) => {
+    setItineraryStops(itineraryStops.filter(s => s.id !== id));
+  };
+
   // --- ROBUST GEOCODING HELPER ---
-  // Tries Ola Maps first, falls back to OpenStreetMap if Ola fails or key is missing
   const getCoordinates = async (placeName) => {
     try {
       if (OLA_MAPS_API_KEY) {
@@ -52,7 +88,6 @@ const RoutePlannerPage = () => {
           };
         }
       }
-      // Fallback to free OpenStreetMap API
       const osmRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(placeName)}`);
       const osmData = await osmRes.json();
       if (osmData && osmData.length > 0) {
@@ -62,7 +97,7 @@ const RoutePlannerPage = () => {
     return null;
   };
 
-  // --- 100% DYNAMIC SEARCH: GEOCODING & RECOMMENDATIONS ---
+  // --- 1. INITIAL SEARCH ---
   const handleSearchRoutes = async (e) => {
     e.preventDefault();
     if (!origin || !destination) return;
@@ -85,30 +120,6 @@ const RoutePlannerPage = () => {
       }
 
       setRouteCoords({ start: startLoc, end: endLoc });
-
-      // 👇 DYNAMIC WIKIPEDIA API: Finds real monuments/places near the destination!
-      setLoadingText('Finding real places...');
-      const wikiRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gsradius=10000&gscoord=${endLoc.lat}|${endLoc.lng}&format=json&origin=*`);
-      const wikiData = await wikiRes.json();
-
-      if (wikiData?.query?.geosearch?.length > 0) {
-        // Map Wikipedia results to our UI format
-        const dynamicPlaces = wikiData.query.geosearch.slice(0, 5).map((place, index) => ({
-          id: place.pageid,
-          name: place.title,
-          lat: place.lat,
-          lng: place.lon,
-          type: "Landmark",
-          time: "1-2 Hours",
-          icon: Camera,
-          desc: `A notable real-world landmark located exactly at these coordinates.`,
-          img: placeholderImages[index % placeholderImages.length]
-        }));
-        setSuggestedPlaces(dynamicPlaces);
-      } else {
-        setSuggestedPlaces([]);
-      }
-
       setIsSearching(true);
     } catch (error) {
       console.error("Search Error:", error);
@@ -118,7 +129,185 @@ const RoutePlannerPage = () => {
     }
   };
 
-  // --- INITIALIZE RELIABLE MAPLIBRE + OLA MAPS ---
+  // --- 2. DYNAMIC ROUTE SCANNER (NOW WITH REAL WIKIPEDIA IMAGES) ---
+  useEffect(() => {
+    if (!routeCoords.start || !routeCoords.end) return;
+
+    const fetchDynamicSuggestions = async () => {
+      setIsSuggesting(true);
+      try {
+        const points = [routeCoords.start, ...itineraryStops, routeCoords.end];
+        const searchCoords = [];
+
+        for (let i = 0; i < points.length; i++) {
+          searchCoords.push({ lat: points[i].lat, lng: points[i].lng });
+          if (i < points.length - 1) {
+            searchCoords.push({
+              lat: (points[i].lat + points[i+1].lat) / 2,
+              lng: (points[i].lng + points[i+1].lng) / 2
+            });
+          }
+        }
+
+        // 👇 Upgraded Wikipedia Generator API Call
+        // Fetches coordinates, pageimages (thumbnails), and brief descriptions all at once!
+        const fetchWiki = async ({lat, lng}) => {
+          try {
+            const url = `https://en.wikipedia.org/w/api.php?action=query&generator=geosearch&ggsradius=10000&ggslimit=3&ggscoord=${lat}|${lng}&prop=coordinates|pageimages|description&piprop=thumbnail&pithumbsize=400&format=json&origin=*`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data?.query?.pages) {
+              return Object.values(data.query.pages);
+            }
+            return [];
+          } catch (e) { return []; }
+        };
+
+        const resultsArray = await Promise.all(searchCoords.map(fetchWiki));
+        const flatResults = resultsArray.flat();
+
+        const uniquePlaces = new Map();
+        flatResults.forEach(page => {
+          const isAlreadyAdded = itineraryStops.some(s => s.id === page.pageid || s.name === page.title);
+          if (!isAlreadyAdded && !uniquePlaces.has(page.pageid)) {
+            uniquePlaces.set(page.pageid, page);
+          }
+        });
+
+        // Map the rich Wikipedia data to our UI
+        const dynamicPlaces = Array.from(uniquePlaces.values()).slice(0, 10).map((page, index) => {
+          // Extract real image or use fallback
+          const realImageUrl = page.thumbnail?.source || placeholderImages[index % placeholderImages.length];
+          // Extract real description or use generic
+          const desc = page.description ? (page.description.charAt(0).toUpperCase() + page.description.slice(1)) : `A notable landmark discovered near your route.`;
+          
+          return {
+            id: page.pageid,
+            name: page.title,
+            lat: page.coordinates?.[0]?.lat || 0,
+            lng: page.coordinates?.[0]?.lon || 0,
+            type: "Landmark",
+            time: "1-2 Hours",
+            icon: Camera,
+            desc: desc,
+            img: realImageUrl
+          };
+        });
+
+        setSuggestedPlaces(dynamicPlaces);
+      } catch (error) {
+        console.error("Suggestion Error:", error);
+      } finally {
+        setIsSuggesting(false);
+      }
+    };
+
+    const debounceTimer = setTimeout(() => {
+      fetchDynamicSuggestions();
+    }, 500);
+
+    return () => clearTimeout(debounceTimer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeCoords.start?.lat, routeCoords.start?.lng, routeCoords.end?.lat, routeCoords.end?.lng, itineraryStops]);
+
+  // --- RE-USABLE ROUTE DRAWING LOGIC ---
+  const drawRouteOnMap = (geometry) => {
+    const map = mapInstance.current;
+    if (!map) return;
+
+    if (!map.getSource('route')) {
+      map.addSource('route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: geometry } });
+      
+      map.addLayer({
+        id: 'route-casing', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': '#0284c7', 'line-width': 8, 'line-opacity': 0.3 }
+      });
+
+      map.addLayer({
+        id: 'route-line', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: { 'line-color': '#3b82f6', 'line-width': 4 }
+      });
+    } else {
+      map.getSource('route').setData({ type: 'Feature', properties: {}, geometry: geometry });
+    }
+  };
+
+
+  // --- UPDATE MAP PINS & FETCH REAL ROAD ROUTE ---
+  const updateMapEntities = useCallback(async () => {
+    const map = mapInstance.current;
+    if (!map || !routeCoords.start || !routeCoords.end) return;
+
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
+
+    const waypoints = []; 
+
+    const createMarkerElement = (name, color) => {
+      const el = document.createElement('div');
+      el.innerHTML = `
+        <div style="position: relative; display: flex; align-items: center; justify-content: center; transform: translate(-50%, -50%);">
+          <div style="width: 16px; height: 16px; background-color: ${color}; border-radius: 50%; border: 3px solid white; box-shadow: 0 3px 8px rgba(0,0,0,0.4); z-index: 2;"></div>
+          <div style="position: absolute; left: 22px; white-space: nowrap; font-family: system-ui; font-size: 13px; font-weight: 800; color: ${currentMapStyle === 'satellite' ? 'white' : '#111827'}; text-shadow: ${currentMapStyle === 'satellite' ? '1px 1px 4px black' : '1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white'}; z-index: 1;">
+            ${name}
+          </div>
+        </div>
+      `;
+      return el;
+    };
+
+    // 1. Origin
+    const startCoord = [routeCoords.start.lng, routeCoords.start.lat];
+    waypoints.push(startCoord);
+    const startMarker = new window.maplibregl.Marker({ element: createMarkerElement(origin.toUpperCase(), '#111827') }).setLngLat(startCoord).addTo(map);
+    markersRef.current.push(startMarker);
+
+    // 2. Stops
+    itineraryStops.forEach((stop) => {
+      const stopCoord = [stop.lng, stop.lat];
+      waypoints.push(stopCoord);
+      const stopMarker = new window.maplibregl.Marker({ element: createMarkerElement(stop.name, '#16a34a') }).setLngLat(stopCoord).addTo(map);
+      markersRef.current.push(stopMarker);
+    });
+
+    // 3. Destination
+    const endCoord = [routeCoords.end.lng, routeCoords.end.lat];
+    waypoints.push(endCoord);
+    const endMarker = new window.maplibregl.Marker({ element: createMarkerElement(destination.toUpperCase(), '#ea580c') }).setLngLat(endCoord).addTo(map);
+    markersRef.current.push(endMarker);
+
+    // 4. FETCH REAL ROAD GEOMETRY AND ETAs FROM OSRM
+    try {
+      const coordsString = waypoints.map(wp => `${wp[0]},${wp[1]}`).join(';');
+      const routeRes = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`);
+      const routeData = await routeRes.json();
+      
+      let routeGeometry;
+      if (routeData.routes && routeData.routes.length > 0) {
+        routeGeometry = routeData.routes[0].geometry; 
+        setRouteLegs(routeData.routes[0].legs || []);
+      } else {
+        routeGeometry = { type: 'LineString', coordinates: waypoints };
+        setRouteLegs([]);
+      }
+
+      routeGeometryRef.current = routeGeometry;
+      drawRouteOnMap(routeGeometry);
+
+    } catch (error) {
+      console.error("Error fetching road geometry:", error);
+    }
+
+    if (currentMapStyle !== 'street-3d') {
+      const bounds = new window.maplibregl.LngLatBounds(waypoints[0], waypoints[0]);
+      waypoints.forEach(coord => bounds.extend(coord));
+      map.fitBounds(bounds, { padding: 80, maxZoom: 12 });
+    }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeCoords, itineraryStops, destination, origin, currentMapStyle]);
+
+  // --- INITIALIZE MAPLIBRE ---
   useEffect(() => {
     if (!isSearching) return;
 
@@ -127,16 +316,19 @@ const RoutePlannerPage = () => {
 
       const map = new window.maplibregl.Map({
         container: mapContainerRef.current,
-        style: `https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json`,
+        style: mapLayouts[currentMapStyle], 
         center: [routeCoords.start.lng, routeCoords.start.lat],
         zoom: 5,
-        attributionControl: false,
-        // 👇 CRITICAL FIX: Intercepts map tile requests to inject the Ola API key
-        transformRequest: (url) => {
-          if (url.includes('olamaps.io')) {
-            return { url: `${url}${url.includes('?') ? '&' : '?'}api_key=${OLA_MAPS_API_KEY}` };
-          }
-          return { url };
+        attributionControl: false
+      });
+
+      map.addControl(new window.maplibregl.NavigationControl({
+        visualizePitch: true 
+      }), 'top-right');
+
+      map.on('style.load', () => {
+        if (routeGeometryRef.current) {
+          drawRouteOnMap(routeGeometryRef.current);
         }
       });
 
@@ -160,83 +352,37 @@ const RoutePlannerPage = () => {
     } else {
       initializeMap();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSearching]);
 
-  // --- UPDATE MAP PINS & ROUTE ---
   useEffect(() => {
     if (mapInstance.current && window.maplibregl) {
-      updateMapEntities();
+      const map = mapInstance.current;
+
+      if (currentMapStyle === 'street-3d') {
+        map.setStyle(mapLayouts['street']);
+        map.once('styledata', () => {
+          map.flyTo({ pitch: 75, zoom: 16.5, duration: 2000, essential: true });
+          updateMapEntities();
+        });
+      } else {
+        map.setStyle(mapLayouts[currentMapStyle]);
+        map.once('styledata', () => {
+          map.easeTo({ pitch: 0, duration: 1000 });
+          updateMapEntities();
+          if (routeGeometryRef.current && routeGeometryRef.current.coordinates) {
+            const bounds = new window.maplibregl.LngLatBounds(
+              routeGeometryRef.current.coordinates[0], 
+              routeGeometryRef.current.coordinates[0]
+            );
+            routeGeometryRef.current.coordinates.forEach(coord => bounds.extend(coord));
+            map.fitBounds(bounds, { padding: 80, maxZoom: 12 });
+          }
+        });
+      }
     }
-  }, [routeCoords, itineraryStops]);
-
-  const updateMapEntities = () => {
-    const map = mapInstance.current;
-    if (!map || !routeCoords.start || !routeCoords.end) return;
-
-    markersRef.current.forEach(marker => marker.remove());
-    markersRef.current = [];
-
-    const waypoints = []; 
-
-    // Custom Circular HTML Marker
-    const createMarkerElement = (name, color) => {
-      const el = document.createElement('div');
-      el.innerHTML = `
-        <div style="position: relative; display: flex; align-items: center; justify-content: center; transform: translate(-50%, -50%);">
-          <div style="width: 16px; height: 16px; background-color: ${color}; border-radius: 50%; border: 3px solid white; box-shadow: 0 3px 8px rgba(0,0,0,0.4); z-index: 2;"></div>
-          <div style="position: absolute; left: 22px; white-space: nowrap; font-family: system-ui; font-size: 13px; font-weight: 800; color: #111827; text-shadow: 1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white; z-index: 1;">
-            ${name}
-          </div>
-        </div>
-      `;
-      return el;
-    };
-
-    // 1. Origin (Black)
-    const startCoord = [routeCoords.start.lng, routeCoords.start.lat];
-    waypoints.push(startCoord);
-    const startMarker = new window.maplibregl.Marker({ element: createMarkerElement(origin.toUpperCase(), '#111827') })
-      .setLngLat(startCoord).addTo(map);
-    markersRef.current.push(startMarker);
-
-    // 2. Stops (Green)
-    itineraryStops.forEach((stop) => {
-      const stopCoord = [stop.lng, stop.lat];
-      waypoints.push(stopCoord);
-      const stopMarker = new window.maplibregl.Marker({ element: createMarkerElement(stop.name, '#16a34a') })
-        .setLngLat(stopCoord).addTo(map);
-      markersRef.current.push(stopMarker);
-    });
-
-    // 3. Destination (Orange)
-    const endCoord = [routeCoords.end.lng, routeCoords.end.lat];
-    waypoints.push(endCoord);
-    const endMarker = new window.maplibregl.Marker({ element: createMarkerElement(destination.toUpperCase(), '#ea580c') })
-      .setLngLat(endCoord).addTo(map);
-    markersRef.current.push(endMarker);
-
-    // 4. Draw Route Polyline
-    if (map.getSource('route')) {
-      map.getSource('route').setData({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: waypoints } });
-    } else {
-      map.addSource('route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: waypoints } } });
-      map.addLayer({
-        id: 'route', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: { 'line-color': '#16a34a', 'line-width': 4, 'line-dasharray': [2, 2] }
-      });
-    }
-
-    // 5. Fit Map Bounds
-    const bounds = new window.maplibregl.LngLatBounds(waypoints[0], waypoints[0]);
-    waypoints.forEach(coord => bounds.extend(coord));
-    map.fitBounds(bounds, { padding: 80, maxZoom: 12 });
-  };
-
-  // --- TIMELINE CONTROLS ---
-  const addStop = (stop) => {
-    if (!itineraryStops.find(s => s.id === stop.id)) setItineraryStops([...itineraryStops, stop]);
-  };
-  const removeStop = (id) => setItineraryStops(itineraryStops.filter(s => s.id !== id));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [updateMapEntities, currentMapStyle]);
 
   // --- EXACT COORDINATE CUSTOM SEARCH ---
   const handleAddCustomStop = async (e) => {
@@ -290,6 +436,35 @@ const RoutePlannerPage = () => {
     navigate('/plan', { state: { prefillPackage: { title: `Custom Drive: ${origin} to ${destination}`, location: `${origin} to ${destination}` } } });
   };
 
+  const totalDistMeters = routeLegs.reduce((sum, leg) => sum + leg.distance, 0);
+  const totalDurSeconds = routeLegs.reduce((sum, leg) => sum + leg.duration, 0);
+  const totalDistKm = (totalDistMeters / 1000).toFixed(1);
+  const totalHrs = Math.floor(totalDurSeconds / 3600);
+  const totalMins = Math.floor((totalDurSeconds % 3600) / 60);
+  const totalTimeStr = totalHrs > 0 ? `${totalHrs}h ${totalMins}m` : `${totalMins}m`;
+
+  const renderLegInfo = (index) => {
+    if (!routeLegs[index]) return null;
+    const leg = routeLegs[index];
+    const dist = (leg.distance / 1000).toFixed(1);
+    const hrs = Math.floor(leg.duration / 3600);
+    const mins = Math.floor((leg.duration % 3600) / 60);
+    const time = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0' }}>
+        <div style={{ backgroundColor: 'white', padding: '6px 12px', borderRadius: '50px', fontSize: '11px', fontWeight: 'bold', color: '#4b5563', display: 'flex', alignItems: 'center', gap: '5px', border: '1px solid #e5e7eb', boxShadow: '0 2px 5px rgba(0,0,0,0.02)' }}>
+          <Navigation size={12} color="#0284c7" /> {dist} km
+        </div>
+        <div style={{ backgroundColor: 'white', padding: '6px 12px', borderRadius: '50px', fontSize: '11px', fontWeight: 'bold', color: '#4b5563', display: 'flex', alignItems: 'center', gap: '5px', border: '1px solid #e5e7eb', boxShadow: '0 2px 5px rgba(0,0,0,0.02)' }}>
+          <Clock size={12} color="#ea580c" /> {time} drive
+        </div>
+      </div>
+    );
+  };
+
+  const isCompact = suggestedPlaces.length > 5;
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', fontFamily: 'system-ui, -apple-system, sans-serif', paddingBottom: '80px', overflowX: 'hidden' }}>
       
@@ -303,7 +478,7 @@ const RoutePlannerPage = () => {
           </h1>
           {!isSearching && (
             <p style={{ fontSize: '18px', color: 'rgba(255,255,255,0.9)', textAlign: 'center', marginBottom: '40px' }}>
-              Enter your starting point and destination. We'll plot the route and dynamically find real landmarks along the way.
+              Enter your starting point and destination. We'll plot the actual road route and dynamically find real landmarks along the way.
             </p>
           )}
 
@@ -327,33 +502,47 @@ const RoutePlannerPage = () => {
 
       {/* 2. THREE-COLUMN DASHBOARD */}
       {isSearching && (
-        <div style={{ maxWidth: '1400px', margin: '40px auto', padding: '0 20px', display: 'grid', gridTemplateColumns: 'minmax(300px, 1.1fr) minmax(300px, 1fr) minmax(350px, 1.1fr)', gap: '30px', animation: 'fadeIn 0.5s ease-out' }}>
+        <div style={{ maxWidth: '1400px', margin: '40px auto', padding: '0 20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '30px', animation: 'fadeIn 0.5s ease-out' }}>
           
           {/* COLUMN 1: TIMELINE */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', position: 'sticky', top: '100px', height: 'fit-content' }}>
             <div style={{ backgroundColor: 'white', borderRadius: '24px', padding: '30px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#111827', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Clock color="#16a34a" /> Route Timeline
-              </h2>
-              <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '30px', fontStyle: 'italic' }}>Drag and drop stops to reorder your trip.</p>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
+                <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#111827', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Clock color="#16a34a" /> Route Timeline
+                </h2>
+                {routeLegs.length > 0 && (
+                  <div style={{ backgroundColor: '#16a34a', color: 'white', padding: '6px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: 'bold', display: 'flex', gap: '5px' }}>
+                    {totalDistKm} km • {totalTimeStr}
+                  </div>
+                )}
+              </div>
+              <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '25px', fontStyle: 'italic' }}>Drag and drop stops to reorder your trip.</p>
 
-              <div style={{ position: 'relative', paddingLeft: '20px', borderLeft: '3px dashed #d1d5db', display: 'flex', flexDirection: 'column', gap: '25px' }}>
+              <div style={{ position: 'relative', paddingLeft: '20px', borderLeft: '3px dashed #d1d5db', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                
                 <div style={{ position: 'relative' }}>
                   <div style={{ position: 'absolute', left: '-30px', top: '2px', width: '16px', height: '16px', borderRadius: '50%', backgroundColor: '#111827', border: '3px solid white' }} />
                   <h4 style={{ fontSize: '12px', color: '#6b7280', fontWeight: '700', textTransform: 'uppercase' }}>Start</h4>
                   <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', textTransform: 'capitalize' }}>{origin}</p>
                 </div>
 
+                {renderLegInfo(0)}
+
                 {itineraryStops.map((stop, index) => (
-                  <div key={stop.id} draggable onDragStart={(e) => handleDragStart(e, index)} onDragEnter={(e) => handleDragEnter(e, index)} onDragEnd={handleDragEnd} onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} style={{ position: 'relative', backgroundColor: '#f0fdf4', padding: '12px', borderRadius: '12px', border: '1px solid #bbf7d0', display: 'flex', gap: '10px', alignItems: 'center', cursor: 'grab' }}>
-                    <div style={{ position: 'absolute', left: '-28px', top: '15px', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#16a34a', border: '3px solid white' }} />
-                    <div style={{ cursor: 'grab', color: '#9ca3af' }}><GripVertical size={20} /></div>
-                    <div style={{ flex: 1 }}>
-                      <h4 style={{ fontSize: '11px', color: '#15803d', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '2px' }}>Stop {index + 1}</h4>
-                      <p style={{ fontSize: '15px', fontWeight: 'bold', color: '#111827', marginBottom: '2px', lineHeight: '1.2' }}>{stop.name}</p>
+                  <React.Fragment key={stop.id}>
+                    <div draggable onDragStart={(e) => handleDragStart(e, index)} onDragEnter={(e) => handleDragEnter(e, index)} onDragEnd={handleDragEnd} onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} style={{ position: 'relative', backgroundColor: '#f0fdf4', padding: '12px', borderRadius: '12px', border: '1px solid #bbf7d0', display: 'flex', gap: '10px', alignItems: 'center', cursor: 'grab' }}>
+                      <div style={{ position: 'absolute', left: '-28px', top: '15px', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#16a34a', border: '3px solid white' }} />
+                      <div style={{ cursor: 'grab', color: '#9ca3af' }}><GripVertical size={20} /></div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h4 style={{ fontSize: '11px', color: '#15803d', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '2px' }}>Stop {index + 1}</h4>
+                        <p style={{ fontSize: '15px', fontWeight: 'bold', color: '#111827', marginBottom: '2px', lineHeight: '1.2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{stop.name}</p>
+                      </div>
+                      <button onClick={() => removeStop(stop.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '5px' }}><Trash2 size={18} /></button>
                     </div>
-                    <button onClick={() => removeStop(stop.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '5px' }}><Trash2 size={18} /></button>
-                  </div>
+                    {renderLegInfo(index + 1)}
+                  </React.Fragment>
                 ))}
 
                 <div style={{ position: 'relative' }}>
@@ -363,7 +552,7 @@ const RoutePlannerPage = () => {
                 </div>
               </div>
 
-              <button onClick={handleFinalize} disabled={itineraryStops.length === 0} style={{ width: '100%', padding: '16px', borderRadius: '12px', backgroundColor: itineraryStops.length > 0 ? '#111827' : '#e5e7eb', color: itineraryStops.length > 0 ? 'white' : '#9ca3af', fontSize: '16px', fontWeight: 'bold', border: 'none', cursor: itineraryStops.length > 0 ? 'pointer' : 'not-allowed', marginTop: '40px', transition: 'all 0.3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <button onClick={handleFinalize} disabled={itineraryStops.length === 0} style={{ width: '100%', padding: '16px', borderRadius: '12px', backgroundColor: itineraryStops.length > 0 ? '#111827' : '#e5e7eb', color: itineraryStops.length > 0 ? 'white' : '#9ca3af', fontSize: '16px', fontWeight: 'bold', border: 'none', cursor: itineraryStops.length > 0 ? 'pointer' : 'not-allowed', marginTop: '30px', transition: 'all 0.3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                 Finalize Trip Details <ArrowRight size={18} />
               </button>
             </div>
@@ -381,42 +570,102 @@ const RoutePlannerPage = () => {
             </div>
           </div>
 
-          {/* COLUMN 2: RELIABLE MAPLIBRE + OLA TILE WIDGET */}
-          <div style={{ backgroundColor: '#e0f2fe', borderRadius: '24px', overflow: 'hidden', position: 'sticky', top: '100px', height: 'calc(100vh - 150px)', minHeight: '500px', border: '1px solid #bae6fd', boxShadow: 'inset 0 0 50px rgba(0,0,0,0.05)' }}>
-            <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}>
+          {/* COLUMN 2: MAP WIDGET WITH CONTROLS */}
+          <div style={{ backgroundColor: '#e0f2fe', borderRadius: '24px', overflow: 'hidden', position: 'sticky', top: '100px', height: 'calc(100vh - 150px)', minHeight: '500px', border: '1px solid #bae6fd', boxShadow: 'inset 0 0 50px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ backgroundColor: 'white', padding: '12px 20px', borderBottom: '1px solid #bae6fd', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 'bold', color: '#111827' }}>
+                <Layers size={18} color="#0284c7" /> Map Layout
+              </div>
+              <select 
+                value={currentMapStyle} 
+                onChange={(e) => setCurrentMapStyle(e.target.value)}
+                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', fontWeight: '600', backgroundColor: '#f9fafb', cursor: 'pointer', outline: 'none' }}
+              >
+                <option value="street">Street View (Top Down)</option>
+                <option value="street-3d">3D Navigation View</option>
+                <option value="satellite">Satellite Imagery</option>
+                <option value="terrain">Topographic / Terrain</option>
+              </select>
+            </div>
+
+            <div ref={mapContainerRef} style={{ width: '100%', flex: 1, position: 'relative' }}>
               {!window.maplibregl && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#0284c7', fontWeight: 'bold', textAlign: 'center', padding: '20px' }}>Loading Map Engine...</div>}
             </div>
-            <div style={{ position: 'absolute', bottom: '20px', left: '20px', backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(5px)', padding: '10px 15px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 'bold', color: '#1f2937', zIndex: 30 }}>
-              <MapIcon size={18} color="#0284c7" /> Powered by Ola Maps
+            
+            <div style={{ position: 'absolute', bottom: '20px', left: '20px', backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(5px)', padding: '10px 15px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 'bold', color: '#1f2937', zIndex: 30, pointerEvents: 'none' }}>
+              <MapIcon size={18} color="#0284c7" /> Live GPS Road Map
             </div>
           </div>
 
-          {/* COLUMN 3: DYNAMIC PILL RECOMMENDATIONS */}
+          {/* COLUMN 3: DYNAMIC VERTICAL CAPSULE RECOMMENDATIONS */}
           <div style={{ overflowY: 'auto', paddingRight: '10px' }} className="hide-scrollbar">
             <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#111827', marginBottom: '5px' }}>Route Suggestions</h2>
-            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '25px', textTransform: 'capitalize' }}>
-              Found {suggestedPlaces.length} attractions near {destination}.
-            </p>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '25px' }}>
+              {isSuggesting ? (
+                <><Loader2 size={16} color="#0284c7" className="animate-spin" /><span style={{ fontSize: '14px', color: '#0284c7', fontWeight: '600' }}>Scanning your entire route...</span></>
+              ) : (
+                <span style={{ fontSize: '14px', color: '#6b7280', textTransform: 'capitalize' }}>Found {suggestedPlaces.length} attractions along your route.</span>
+              )}
+            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div style={{ 
+              display: isCompact ? 'grid' : 'flex', 
+              flexDirection: isCompact ? 'unset' : 'column', 
+              gridTemplateColumns: isCompact ? 'repeat(2, 1fr)' : 'none', 
+              gap: '15px' 
+            }}>
               {suggestedPlaces.length > 0 ? suggestedPlaces.map((rec) => {
                 const isAdded = itineraryStops.find(s => s.id === rec.id);
                 return (
-                  <div key={rec.id} style={{ backgroundColor: 'white', borderRadius: '50px', padding: '10px', display: 'flex', alignItems: 'center', gap: '15px', border: isAdded ? '2px solid #16a34a' : '1px solid #e5e7eb', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', transition: 'all 0.2s' }}>
-                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: '2px solid #f3f4f6' }}>
+                  <div key={rec.id} style={{ 
+                    backgroundColor: 'white', 
+                    borderRadius: '24px', 
+                    padding: isCompact ? '15px 10px' : '10px', 
+                    display: 'flex', 
+                    flexDirection: isCompact ? 'column' : 'row',
+                    alignItems: 'center', 
+                    gap: '10px', 
+                    border: isAdded ? '2px solid #16a34a' : '1px solid #e5e7eb', 
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.03)', 
+                    transition: 'all 0.2s', 
+                    opacity: isSuggesting ? 0.5 : 1,
+                    minWidth: 0 
+                  }}>
+                    
+                    <div style={{ width: isCompact ? '60px' : '80px', height: isCompact ? '60px' : '80px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: '2px solid #f3f4f6' }}>
                       <img src={rec.img} alt={rec.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
-                    <div style={{ flex: 1, overflow: 'hidden' }}>
-                      <h4 style={{ fontSize: '15px', fontWeight: 'bold', color: '#111827', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rec.name}</h4>
-                      <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{rec.desc}</p>
+
+                    <div style={{ flex: 1, overflow: 'hidden', width: '100%', textAlign: isCompact ? 'center' : 'left' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: isCompact ? 'center' : 'flex-start', gap: '4px', color: '#6b7280', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>
+                        <rec.icon size={12} /> {rec.type}
+                      </div>
+                      <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: '#111827', marginBottom: '2px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'normal' }}>
+                        {rec.name}
+                      </h4>
+                      {!isCompact && (
+                        <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{rec.desc}</p>
+                      )}
                     </div>
-                    <button onClick={() => isAdded ? removeStop(rec.id) : addStop(rec)} title={isAdded ? "Remove" : "Add"} style={{ width: '45px', height: '45px', borderRadius: '50%', flexShrink: 0, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', marginRight: '5px', backgroundColor: isAdded ? '#f0fdf4' : '#f3f4f6', color: isAdded ? '#15803d' : '#374151' }}>
-                      {isAdded ? <CheckCircle2 size={22} /> : <Plus size={22} />}
+                    
+                    <button onClick={() => isAdded ? removeStop(rec.id) : addStop(rec)} title={isAdded ? "Remove" : "Add"} style={{ 
+                      width: isCompact ? '100%' : '45px', 
+                      height: isCompact ? '32px' : '45px', 
+                      borderRadius: isCompact ? '10px' : '50%', 
+                      flexShrink: 0, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                      transition: 'all 0.2s', 
+                      backgroundColor: isAdded ? '#f0fdf4' : '#f3f4f6', 
+                      color: isAdded ? '#15803d' : '#374151',
+                      fontSize: '12px', fontWeight: 'bold'
+                    }}>
+                      {isAdded ? <CheckCircle2 size={16} /> : <Plus size={16} />}
+                      {isCompact && (isAdded ? 'Added' : 'Add Stop')}
                     </button>
                   </div>
                 )
-              }) : (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280', backgroundColor: 'white', borderRadius: '20px', border: '1px dashed #d1d5db' }}>
+              }) : !isSuggesting && (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280', backgroundColor: 'white', borderRadius: '20px', border: '1px dashed #d1d5db', gridColumn: '1 / -1' }}>
                   No automatic suggestions found. Use the search box!
                 </div>
               )}
