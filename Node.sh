@@ -14,3 +14,7 @@ node -v # Should print "v24.13.1".
 npm -v # Should print "11.8.0".
 npm install react-scripts
 npm start
+
+python -m pip install uv
+cd /backend/ && uv run main.py
+cd ../
