@@ -26,3 +26,4 @@ yarn-error.log*
 # backend deps
 /backend/.venv
 /backend/__pycache__
+/backend/notebooks
