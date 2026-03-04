@@ -728,13 +728,14 @@ const Header = () => {
 
   // --- DESKTOP NAVIGATION ---
   const desktopNavLinks = [
-    { name: 'Discover', href: '/discover' }, // 👇 Newly Added Discover Page
+    { name: 'Discover', href: '/discover' },
     { name: 'Plan Trip', href: '/plan' },
     { name: 'Itineraries', href: '/itinerary' },
     { name: 'Lodges', href: '/lodges' },
     { name: 'Experiences', href: '/experiences' },
     { name: 'Diaries', href: '/story' },
-    { name: 'About Us', href: '/about' }
+    { name: 'About Us', href: '/about' },
+    {name: 'Careers', href: '/careers'}
   ];
 
   // --- MOBILE ACCORDION STRUCTURE ---

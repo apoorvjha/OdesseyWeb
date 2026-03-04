@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BookOpen, MapPin, Calendar, X, Heart, Share2, Sparkles, ArrowRight, Compass } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -6,12 +6,15 @@ const StoriesPage = () => {
   const navigate = useNavigate();
   const [selectedStory, setSelectedStory] = useState(null);
   const [activeCategory, setActiveCategory] = useState('All');
+  
+  // State to hold both curated and user-generated stories
+  const [allStories, setAllStories] = useState([]);
 
-  // --- MOCK DATA: EXPANDED TRAVEL DIARIES (15 STORIES) ---
-  const allStories = [
+  // --- MOCK DATA: CURATED TRAVEL DIARIES ---
+  const curatedStories = [
     // --- NATURE ---
     {
-      id: 1,
+      id: "curated_1",
       title: "Chasing the Monsoon in the Abode of Clouds",
       author: "Priya Sharma",
       state: "Meghalaya",
@@ -23,7 +26,7 @@ const StoriesPage = () => {
       fullText: "My journey to Meghalaya started with a long, winding drive through the misty hills of the northeast. As we approached Cherrapunji, the clouds descended so low it felt like we were driving through the sky itself.\n\nThe highlight of my trip was the trek to the Double Decker Living Root Bridge. It’s not just a bridge; it’s a living, breathing testament to the ingenuity of the Khasi tribe. The rain was relentless, but it only added to the magic. Every waterfall we passed was roaring with life. We stayed in a small eco-lodge where the hosts served us traditional bamboo shoot pork and red rice.\n\nIf you ever feel disconnected from nature, Meghalaya is the place to find your roots again. Quite literally."
     },
     {
-      id: 6,
+      id: "curated_6",
       title: "A Canvas of Blooms in the Himalayas",
       author: "Aisha Khan",
       state: "Uttarakhand",
@@ -35,7 +38,7 @@ const StoriesPage = () => {
       fullText: "I had heard stories about the Valley of Flowers, but nothing prepared me for the actual sight. After a grueling trek from Ghangaria, the landscape suddenly opened up into a massive gorge carpeted in millions of wild alpine flowers.\n\nEvery shade of pink, blue, yellow, and white was represented here. The air smelled incredibly sweet, and the only sound was the buzzing of bees and the distant rush of the Pushpawati river. Sitting on a rock in the middle of that valley, surrounded by towering, mist-covered peaks, I felt an overwhelming sense of peace. Nature has a way of making you feel incredibly small, yet entirely whole."
     },
     {
-      id: 11,
+      id: "curated_11",
       title: "Waking up to the Kanchenjunga",
       author: "Rohan Das",
       state: "Sikkim",
@@ -49,7 +52,7 @@ const StoriesPage = () => {
 
     // --- CULTURE ---
     {
-      id: 2,
+      id: "curated_2",
       title: "Lost in the Colors of the Pink City",
       author: "David Chen",
       state: "Rajasthan",
@@ -61,7 +64,7 @@ const StoriesPage = () => {
       fullText: "Jaipur doesn't just welcome you; it engulfs you. As a photographer, I was immediately drawn to the warm, terracotta pink hues that paint the entire old city.\n\nI spent an entire morning simply watching the light change on the intricate facade of the Hawa Mahal. Later, exploring the Amer Fort felt like stepping onto the set of an epic historical movie. What I loved most, though, wasn't the monuments, but the people. I spent hours sitting with a local block-printer, learning the rhythmic art of stamping patterns onto fabric.\n\nThe city is a vibrant paradox—deeply rooted in royal history, yet buzzing with chaotic modern life. Do not leave without trying the Pyaz Kachori!"
     },
     {
-      id: 7,
+      id: "curated_7",
       title: "The Evening Aarti at the Ghats",
       author: "Sneha Patil",
       state: "Uttar Pradesh",
@@ -73,7 +76,7 @@ const StoriesPage = () => {
       fullText: "There is nowhere on earth quite like Kashi. The moment I stepped onto the ancient stone ghats, the chaos of the city faded into a rhythmic, spiritual hum.\n\nThe defining moment of my trip was renting a small wooden boat at dusk. As the sun set, the Dashashwamedh Ghat lit up with hundreds of brass lamps. The sound of conch shells, chanting, and bells echoed across the river. Watching the priests perform the Ganga Aarti with such synchronized devotion brought tears to my eyes. Varanasi doesn't just show you its culture; it makes you feel it in your very soul."
     },
     {
-      id: 12,
+      id: "curated_12",
       title: "Temples Touching the Sky",
       author: "Arun Iyer",
       state: "Tamil Nadu",
@@ -87,7 +90,7 @@ const StoriesPage = () => {
 
     // --- ADVENTURE ---
     {
-      id: 4,
+      id: "curated_4",
       title: "A Solo Trekker's Guide to the Himalayas",
       author: "Vikram Singh",
       state: "Himachal Pradesh",
@@ -99,7 +102,7 @@ const StoriesPage = () => {
       fullText: "Parvati Valley is legendary among backpackers, and for good reason. I set off on the Kheerganga trek early in the morning. The trail weaves through dense pine forests, over roaring rivers, and past tiny villages clinging to the mountainside.\n\nAbout halfway up, my legs were burning, but the camaraderie on the trail kept me going. Fellow trekkers share water, stories, and encouragement. When I finally reached the top, the reward was unparalleled: a natural, steaming hot spring right at the edge of the mountain.\n\nSitting in that hot water while snowflakes gently drifted down around me is a core memory I will cherish forever. Himachal changes you."
     },
     {
-      id: 8,
+      id: "curated_8",
       title: "Riding the Roof of the World",
       author: "Kabir & Aman",
       state: "Ladakh",
@@ -111,10 +114,10 @@ const StoriesPage = () => {
       fullText: "A bike trip to Ladakh is a rite of passage. The air gets thinner, the roads get tougher, and the landscapes get more surreal with every passing kilometer.\n\nThe ride from Leh to Nubra Valley via Khardung La was the most challenging riding I've ever done. Navigating melting ice streams and rocky patches required intense focus. But standing at what is often called the highest motorable road in the world, with prayer flags fluttering fiercely in the freezing wind, I felt an unmatched sense of accomplishment. We ended the trip camping under a blanket of stars at Pangong Lake."
     },
     {
-      id: 13,
+      id: "curated_13",
       title: "Diving into the Deep Blue",
       author: "Natasha Ray",
-      state: "Andaman and Nicobar Islands",
+      state: "Andaman Islands",
       category: "Adventure",
       date: "December 2023",
       likes: 540,
@@ -125,7 +128,7 @@ const StoriesPage = () => {
 
     // --- RELAXATION ---
     {
-      id: 3,
+      id: "curated_3",
       title: "Finding Silence in the Backwaters",
       author: "Ananya Desai",
       state: "Kerala",
@@ -137,7 +140,7 @@ const StoriesPage = () => {
       fullText: "I booked a houseboat in Alleppey expecting a standard tourist experience, but what I got was profound stillness. \n\nDrifting through the narrow, emerald-green canals, the only sounds were the gentle lapping of water against the wooden hull and the occasional call of a kingfisher. Our boat crew prepared the most incredible fresh Karimeen (pearl spot fish) wrapped in banana leaves, cooked right there on the boat.\n\nWe passed small villages where life revolves entirely around the water—children taking small boats to school, women washing clothes on the steps. It was a humbling, beautiful glimpse into a life moving at a completely different, much healthier pace."
     },
     {
-      id: 9,
+      id: "curated_9",
       title: "Sun, Sand, and South Goa",
       author: "Maria & Tom",
       state: "Goa",
@@ -149,7 +152,7 @@ const StoriesPage = () => {
       fullText: "While North Goa buzzes with energy and nightlife, we craved quiet. We rented a small, airy cottage near Agonda beach in South Goa.\n\nOur days consisted of waking up late, walking barefoot to the beach, and reading books in hammocks strung between coconut trees. There were no loud clubs, just the rhythmic sound of the Arabian Sea. We rented a scooter and aimlessly explored quiet, palm-lined village roads, stopping only to drink fresh coconut water or eat Goan fish curry at small local shacks. It was the ultimate mental reset."
     },
     {
-      id: 14,
+      id: "curated_14",
       title: "A Slice of France in India",
       author: "Kavya Menon",
       state: "Puducherry",
@@ -163,7 +166,7 @@ const StoriesPage = () => {
 
     // --- OFFBEAT ---
     {
-      id: 5,
+      id: "curated_5",
       title: "Midnight in the White Desert",
       author: "Sarah Jenkins",
       state: "Gujarat",
@@ -175,7 +178,7 @@ const StoriesPage = () => {
       fullText: "Nothing can prepare you for the sheer scale of the Rann of Kutch. During the day, the white salt flats reflect the sun so brightly it blinds you. But at night, under a full moon, it becomes magical.\n\nWe attended the Rann Utsav, which was a beautiful explosion of Gujarati culture—folk dances, camel safaris, and incredible Kutchi embroidery stalls. But as midnight approached, we walked far out onto the salt desert, away from the festival lights.\n\nThe silence out there is absolute. The salt crunches under your boots, and the horizon blurs so perfectly with the sky that you feel like you are walking in outer space. Truly offbeat, truly incredible."
     },
     {
-      id: 10,
+      id: "curated_10",
       title: "The Monastery in the Clouds",
       author: "Tenzin Dorjee",
       state: "Himachal Pradesh",
@@ -187,7 +190,7 @@ const StoriesPage = () => {
       fullText: "Spiti Valley is not for the faint of heart. The roads are non-existent, the altitude is dizzying, and the landscape is entirely barren. But that isolation is exactly what makes it so special.\n\nStanding before the Key Monastery, which sits perched atop a hill at 13,668 feet, I felt completely detached from the modern world. The monks welcomed us with hot butter tea, and we sat listening to their chants echoing through the cold, thin mountain air. There is no cell network here, no distractions. Just you, the wind, and the towering brown mountains of the cold desert."
     },
     {
-      id: 15,
+      id: "curated_15",
       title: "Trekking the Dzukou Valley",
       author: "Nikhil Verma",
       state: "Nagaland",
@@ -199,6 +202,38 @@ const StoriesPage = () => {
       fullText: "Nagaland is heavily underrated, and Dzukou Valley is its crown jewel. The trek up from Viswema village was steep and muddy, but the forest was incredibly lush and ancient.\n\nAs we crossed the final ridge, the valley revealed itself. Unlike the jagged peaks of the Himalayas, Dzukou consists of smooth, rolling hillocks covered entirely in dwarf bamboo, giving it the appearance of an endless, velvety green carpet. We camped in a cave overhang near an ice-cold stream. Waking up to the morning mist rolling across that untouched green expanse is an experience reserved only for those willing to go off the map."
     }
   ];
+
+  // --- INITIALIZE & MERGE STORIES ---
+  useEffect(() => {
+    // 1. Get user stories from LocalStorage
+    const savedStoriesJson = localStorage.getItem('odessey_stories');
+    let userStories = [];
+    
+    if (savedStoriesJson) {
+      const rawStories = JSON.parse(savedStoriesJson);
+      // Format user stories to match the UI structure of curated stories
+      userStories = rawStories.map(story => ({
+        id: `user_${story.id}`,
+        title: story.title,
+        author: story.author,
+        state: story.location, 
+        // Map persona type to a category for filtering
+        category: story.type === 'The Traveller' ? 'Adventure' : 'Relaxation', 
+        date: story.date,
+        likes: Math.floor(Math.random() * 50) + 10, // Give them some fake initial likes!
+        // Provide a default image based on type if they didn't upload one
+        img: story.type === 'The Traveller' 
+          ? "https://images.unsplash.com/photo-1506461883276-594a12b11cf3?auto=format&fit=crop&w=800&q=80" 
+          : "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=800&q=80",
+        excerpt: story.content.substring(0, 120) + "...",
+        fullText: story.content
+      }));
+    }
+
+    // 2. Merge User Stories (top) with Curated Stories (bottom)
+    setAllStories([...userStories, ...curatedStories]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const categories = ['All', 'Nature', 'Culture', 'Adventure', 'Relaxation', 'Offbeat'];
 

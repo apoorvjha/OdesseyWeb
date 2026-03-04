@@ -161,7 +161,7 @@ const Footer = () => {
                 <Phone size={18} color="#16a34a" /> +91 93535 20020
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#9ca3af', fontSize: '15px' }}>
-                <Mail size={18} color="#16a34a" /> founders@odessey.com
+                <Mail size={18} color="#16a34a" /> founders@odessey.in
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', color: '#9ca3af', fontSize: '15px', lineHeight: '1.5' }}>
                 <MapPin size={18} color="#16a34a" style={{ flexShrink: 0, marginTop: '2px' }} /> 
