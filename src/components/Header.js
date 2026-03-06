@@ -735,7 +735,8 @@ const Header = () => {
     { name: 'Experiences', href: '/experiences' },
     { name: 'Diaries', href: '/story' },
     { name: 'About Us', href: '/about' },
-    {name: 'Careers', href: '/careers'}
+    {name: 'Careers', href: '/careers'},
+    { name: 'Blog', href: '/blog' },
   ];
 
   // --- MOBILE ACCORDION STRUCTURE ---
@@ -770,7 +771,7 @@ const Header = () => {
       title: "Inspiration", icon: Camera,
       items: [
         { label: "Travel Diaries", href: "/story" },
-        { label: "Traveller Stories", href: "/story" }
+        { label: "Travel Blog & Guides", href: "/blog" }
       ]
     },
     {
