@@ -737,6 +737,7 @@ const Header = () => {
     { name: 'About Us', href: '/about' },
     {name: 'Careers', href: '/careers'},
     { name: 'Blog', href: '/blog' },
+    { name: 'Games', href: '/games' }
   ];
 
   // --- MOBILE ACCORDION STRUCTURE ---
