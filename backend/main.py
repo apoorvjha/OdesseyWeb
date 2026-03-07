@@ -1,20 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, logger
 import uvicorn
-from pymongo import MongoClient
-from dotenv import load_dotenv
 import os
 from pydantic import BaseModel
 from utility import *
-
-load_dotenv()
-
-#TODO:
-## 1. String matching for food search - use fuzzy matching or regex to improve search results -> Done
-## 2. Combine below dataset and create a new collection
-### a. https://www.kaggle.com/datasets/abhijitdahatonde/swiggy-restuarant-dataset
-### b. https://www.kaggle.com/datasets/ronidas39/zomato-india-data-set
-## 3. add cuisine, ingredients and instructions to the collection and return it in the response. -> Done
-## 4. Instead of is_veg as boolean, use diet as string and allow users to search for specific diets like vegan, vegetarian, non-vegetarian, sattvic etc. -> Done
 
 # instantiate the application
 app = FastAPI()
@@ -26,17 +14,18 @@ class FoodSearchRequest(BaseModel):
     course: str = None
     cuisine: str = None
 
+class RestrauntSearchRequest(BaseModel):
+    query: str = None
+
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
 @app.post("/get_cuisines")
 async def get_cuisines():
-    mongo_uri = os.getenv("MONGO_URI")
-    db_name = os.getenv("DB_NAME")
-    client = MongoClient(mongo_uri)
-    db = client[db_name]
-    collection = db["cuisines"]
+    collection = get_mongo_collection("cuisines")
+    if collection is None:
+        return {"cuisines": []}
     cusines = []
     for item in collection.find():
         cusines.append({
@@ -54,11 +43,9 @@ async def get_cuisines():
 
 @app.post("/get_food_search")
 async def food_search(request: FoodSearchRequest):
-    mongo_uri = os.getenv("MONGO_URI")
-    db_name = os.getenv("DB_NAME")
-    client = MongoClient(mongo_uri)
-    db = client[db_name]
-    collection = db["cuisines"]
+    collection = get_mongo_collection("cuisines")
+    if collection is None:
+        return {"cuisines": []}
     cusines = []
     for item in collection.find():
         if string_match_score(request.query, item["name"]) >= 0.6 or request.query is None:
@@ -83,6 +70,80 @@ async def food_search(request: FoodSearchRequest):
                 "instructions" : str(item["instructions"])
             })
     return {"cuisines": cusines}
+
+@app.post("/get_restraunts")
+async def get_restraunts(request: RestrauntSearchRequest):
+
+    collection = get_mongo_collection("restraunts")
+    query = request.query.lower().strip()
+    restraunts = []
+
+    if collection.count_documents({}) == 0:
+
+        response = request_ola_maps_api(query)
+
+        if response.status_code == 200:
+            data = response.json()
+
+            for item in data.get("predictions", []):
+
+                restraunt_data = {
+                    "place_id": str(item.get("place_id", "")),
+                    "name": str(item.get("name", "")),
+                    "formatted_address": str(item.get("formatted_address", "")),
+                    "lat": float(item.get("geometry", {}).get("location", {}).get("lat", 0.0)),
+                    "lng": float(item.get("geometry", {}).get("location", {}).get("lng", 0.0)),
+                    "query": str(query)
+                }
+
+                restraunts.append(restraunt_data)
+                collection.insert_one(restraunt_data)
+
+            return {"results": restraunts}
+
+        else:
+            print(f"Error fetching data from OLA Maps API: {response.status_code}")
+            return {"results": []}
+
+    else:
+
+        for item in collection.find({}, {"_id": 0}):
+
+            if string_match_score(query, item.get("query", "")) >= 0.9:
+
+                restraunt_data = {
+                    "place_id": str(item.get("place_id", "")),
+                    "name": str(item.get("name", "")),
+                    "formatted_address": str(item.get("formatted_address", "")),
+                    "lat": float(item.get("lat", 0.0)),
+                    "lng": float(item.get("lng", 0.0))
+                }
+
+                restraunts.append(restraunt_data)
+
+        if len(restraunts) == 0:
+
+            response = request_ola_maps_api(query)
+
+            if response.status_code == 200:
+                data = response.json()
+
+                for item in data.get("predictions", []):
+
+                    restraunt_data = {
+                        "place_id": str(item.get("place_id", "")),
+                        "name": str(item.get("name", "")),
+                        "formatted_address": str(item.get("formatted_address", "")),
+                        "lat": float(item.get("geometry", {}).get("location", {}).get("lat", 0.0)),
+                        "lng": float(item.get("geometry", {}).get("location", {}).get("lng", 0.0)),
+                        "query": str(query)
+                    }
+
+                    restraunts.append(restraunt_data)
+                    collection.insert_one(restraunt_data)
+
+        return {"results": restraunts}
+
 
 
 if __name__ == "__main__":
