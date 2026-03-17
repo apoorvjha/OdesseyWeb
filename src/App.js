@@ -234,6 +234,8 @@ import TravelerStories from "./components/TravelerStories";
 import SearchResults from "./components/SearchResults";
 import StateDetails from "./components/StateDetails"; 
 
+import HoverChatbot from "./components/HoverChatBot";
+
 // Pages
 import PlanTrip from "./pages/PlanTrip";
 import StoriesPage from "./pages/StoriesPage";
@@ -317,6 +319,8 @@ function App() {
           <Route path="/games" element={<GamePage />} />
 
         </Routes>
+
+        <HoverChatbot />
 
         <Footer />
       </div>
