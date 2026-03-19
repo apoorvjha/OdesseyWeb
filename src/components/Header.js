@@ -745,7 +745,7 @@ const Header = () => {
       items: [
         { name: 'Lodges', href: '/lodges', icon: Home },
         { name: 'Route Planner', href: '/route-planner', icon: Map },
-        { name: 'Vehicle Options', href: '/plan', icon: Car }
+        { name: 'Vehicle Options', href: '/vehicles', icon: Car }
       ] 
     },
     { 
@@ -782,7 +782,7 @@ const Header = () => {
       items: [
         { label: "Premium Lodges", href: "/lodges", navIcon: Home },
         { label: "Route Planner", href: "/route-planner", navIcon: Map }, 
-        { label: "Vehicle Options", href: "/plan", navIcon: Car } 
+        { label: "Vehicle Options", href: "/vehicles", navIcon: Car } 
       ]
     },
     {

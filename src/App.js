@@ -249,6 +249,7 @@ import TripDiscovererPage from './pages/TripDiscovererPage';
 import BlogPage from './pages/BlogPage';
 import GamePage from "./pages/GamePage";
 import CareersPage from "./pages/CareersPage";
+import VehicleOptions from "./pages/VehicleOptions";
 
 // 👇 NEW: ScrollToTop Helper Component
 const ScrollToTop = () => {
@@ -317,6 +318,7 @@ function App() {
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/games" element={<GamePage />} />
           <Route path="/careers" element={<CareersPage />} />
+          <Route path="/vehicles" element={<VehicleOptions />} />
 
         </Routes>
 
