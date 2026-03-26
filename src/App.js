@@ -235,6 +235,7 @@ import SearchResults from "./components/SearchResults";
 import StateDetails from "./components/StateDetails"; 
 
 import HoverChatbot from "./components/HoverChatBot";
+import WalkingCursor from "./components/WalkingCursor";
 
 // Pages
 import PlanTrip from "./pages/PlanTrip";
@@ -323,6 +324,7 @@ function App() {
         </Routes>
 
         <HoverChatbot />
+        <WalkingCursor />
 
         <Footer />
       </div>
