@@ -85,10 +85,10 @@ const SearchAutocomplete = ({ value, onChange, placeholder, Icon, iconColor, dis
           });
           const data = await res.json();
           if (data?.predictions) { setSuggestions(data.predictions.map(p => p.description)); return; }
-        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(value)}&limit=15`);
-        const data = await res.json();
-        if (data?.features) {
-          const parsed = data.features.filter(f => f.properties.country === 'India' || f.properties.countrycode === 'IN')
+        const fallbackRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(value)}&limit=15`);
+        const fallbackData = await fallbackRes.json();
+        if (fallbackData?.features) {
+          const parsed = fallbackData.features.filter(f => f.properties.country === 'India' || f.properties.countrycode === 'IN')
             .map(f => [f.properties.name, f.properties.state, f.properties.country].filter(Boolean).join(', '));
           setSuggestions([...new Set(parsed)].slice(0, 5));
         }
