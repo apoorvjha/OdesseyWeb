@@ -76,3 +76,27 @@ def request_ola_maps_api(query: str):
         }
     )
     return response
+
+def request_ola_maps_reverse_geocode(lat: float, lng: float):
+    OLA_MAPS_API_KEY = os.getenv("OLA_MAPS_API_KEY")
+    response = requests.get(
+        "https://api.olamaps.io/places/v1/reverse-geocode",
+        params={"latlng": f"{lat},{lng}", "api_key": OLA_MAPS_API_KEY}
+    )
+    return response
+
+def request_ola_maps_autocomplete(input_text: str):
+    OLA_MAPS_API_KEY = os.getenv("OLA_MAPS_API_KEY")
+    response = requests.get(
+        "https://api.olamaps.io/places/v1/autocomplete",
+        params={"input": input_text, "api_key": OLA_MAPS_API_KEY}
+    )
+    return response
+
+def request_ola_maps_geocode(address: str):
+    OLA_MAPS_API_KEY = os.getenv("OLA_MAPS_API_KEY")
+    response = requests.get(
+        "https://api.olamaps.io/places/v1/geocode",
+        params={"address": address, "api_key": OLA_MAPS_API_KEY}
+    )
+    return response
