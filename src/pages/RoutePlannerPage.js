@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MapPin, Navigation, Plus, Trash2, ArrowRight, Clock, Map as MapIcon, CheckCircle2, Search, Loader2, GripVertical, Camera, Layers, CloudSun, AlertTriangle, Route, ChevronLeft, ChevronRight, RotateCcw, Bed, Utensils, Fuel, Landmark, Compass, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const OLA_MAPS_API_KEY = process.env.REACT_APP_OLA_MAPS_API_KEY || ""; 
+const FASTAPI_BASE_URL = 'http://127.0.0.1:8000'; 
 const WEATHER_API_KEY = process.env.REACT_APP_WEATHER_API_KEY || ""; 
 
 const getWeatherBackground = (condition = "") => {
@@ -78,11 +78,13 @@ const SearchAutocomplete = ({ value, onChange, placeholder, Icon, iconColor, dis
     if (!value || value.length < 2) { setSuggestions([]); return; }
     const delayDebounceFn = setTimeout(async () => {
       try {
-        if (OLA_MAPS_API_KEY) {
-          const res = await fetch(`https://api.olamaps.io/places/v1/autocomplete?input=${encodeURIComponent(value)}&api_key=${OLA_MAPS_API_KEY}`);
+        const res = await fetch(`${FASTAPI_BASE_URL}/autocomplete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ input: value })
+          });
           const data = await res.json();
           if (data?.predictions) { setSuggestions(data.predictions.map(p => p.description)); return; }
-        }
         const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(value)}&limit=15`);
         const data = await res.json();
         if (data?.features) {
@@ -184,13 +186,14 @@ const RoutePlannerPage = () => {
   const getCoordinates = async (placeName) => {
     try {
       let lat = null, lng = null, name = placeName, defaultAddress = "";
-      if (OLA_MAPS_API_KEY) {
-        const res = await fetch(`https://api.olamaps.io/places/v1/geocode?address=${encodeURIComponent(placeName)}&api_key=${OLA_MAPS_API_KEY}`);
-        const data = await res.json();
-        if (data?.geocodingResults?.[0]?.geometry?.location) {
-          const result = data.geocodingResults[0];
-          lat = result.geometry.location.lat; lng = result.geometry.location.lng; name = result.name || placeName; defaultAddress = result.formatted_address || "";
-        }
+      const geoRes = await fetch(`${FASTAPI_BASE_URL}/geocode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: placeName })
+      });
+      const geoData = await geoRes.json();
+      if (geoData?.lat && geoData?.lng) {
+        lat = geoData.lat; lng = geoData.lng; name = geoData.name || placeName; defaultAddress = geoData.formatted_address || "";
       }
       if (!lat || !lng) {
         const osmRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(placeName + ", India")}&countrycodes=in`);
