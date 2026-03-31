@@ -1,4 +1,5 @@
 from fastapi import FastAPI, logger
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import os
 from pydantic import BaseModel
@@ -6,6 +7,13 @@ from utility import *
 
 # instantiate the application
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Food search request model
 class FoodSearchRequest(BaseModel):
@@ -16,6 +24,16 @@ class FoodSearchRequest(BaseModel):
 
 class RestrauntSearchRequest(BaseModel):
     query: str = None
+
+class ReverseGeocodeRequest(BaseModel):
+    lat: float
+    lng: float
+
+class AutocompleteRequest(BaseModel):
+    input: str
+
+class GeocodeRequest(BaseModel):
+    address: str
 
 @app.get("/")
 async def root():
@@ -143,6 +161,48 @@ async def get_restraunts(request: RestrauntSearchRequest):
                     collection.insert_one(restraunt_data)
 
         return {"results": restraunts}
+
+
+
+@app.post("/reverse_geocode")
+async def reverse_geocode(request: ReverseGeocodeRequest):
+    response = request_ola_maps_reverse_geocode(request.lat, request.lng)
+    if response.status_code == 200:
+        data = response.json()
+        if data.get("results") and len(data["results"]) > 0:
+            return {"formatted_address": data["results"][0].get("formatted_address", "")}
+    return {"formatted_address": ""}
+
+
+@app.post("/autocomplete")
+async def autocomplete(request: AutocompleteRequest):
+    response = request_ola_maps_autocomplete(request.input)
+    if response.status_code == 200:
+        data = response.json()
+        predictions = [
+            {"description": p.get("description", "")}
+            for p in data.get("predictions", [])
+        ]
+        return {"predictions": predictions}
+    return {"predictions": []}
+
+
+@app.post("/geocode")
+async def geocode(request: GeocodeRequest):
+    response = request_ola_maps_geocode(request.address)
+    if response.status_code == 200:
+        data = response.json()
+        results = data.get("geocodingResults", [])
+        if results:
+            result = results[0]
+            location = result.get("geometry", {}).get("location", {})
+            return {
+                "lat": location.get("lat"),
+                "lng": location.get("lng"),
+                "name": result.get("name", ""),
+                "formatted_address": result.get("formatted_address", "")
+            }
+    return None
 
 
 
