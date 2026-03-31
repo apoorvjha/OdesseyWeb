@@ -228,7 +228,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, X, ArrowRight, ArrowLeft, MapPin, Mountain, Coffee, Map as MapIcon, Landmark, Compass, User, Smile, Globe, Home, Users, Calendar, Wallet, Loader2, Utensils, Search, Navigation, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const OLA_MAPS_API_KEY = process.env.REACT_APP_OLA_MAPS_API_KEY || ""; 
+const FASTAPI_BASE_URL = 'http://127.0.0.1:8000'; 
 
 const getRestaurantImage = (idx) => {
   const images = [
@@ -316,16 +316,18 @@ const ExperienceGrid = () => {
         // 2. Fetch Restaurants Overview
         try {
           const restQuery = userSearch ? `${userSearch} restaurant India` : `${coreTerm} restaurant India`;
-          if (OLA_MAPS_API_KEY) {
-            const oRes = await fetch(`https://api.olamaps.io/places/v1/textsearch?query=${encodeURIComponent(restQuery)}&api_key=${OLA_MAPS_API_KEY}`);
-            const oData = await oRes.json();
-            if (oData?.results) {
-              restaurants = oData.results.map((r, idx) => ({
-                id: r.place_id, name: r.name, desc: r.formatted_address || "Local Restaurant",
-                img: getRestaurantImage(idx), isFood: true, isRestaurant: true, lat: r.geometry?.location?.lat, lng: r.geometry?.location?.lng
-              }));
-            }
-          } 
+          const oRes = await fetch(`${FASTAPI_BASE_URL}/get_restraunts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: restQuery })
+          });
+          const oData = await oRes.json();
+          if (oData?.results) {
+            restaurants = oData.results.map((r, idx) => ({
+              id: r.place_id, name: r.name, desc: r.formatted_address || "Local Restaurant",
+              img: getRestaurantImage(idx), isFood: true, isRestaurant: true, lat: r.lat, lng: r.lng
+            }));
+          }
           if (restaurants.length === 0) {
             const restRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(restQuery)}&limit=15`);
             const restData = await restRes.json();
@@ -401,15 +403,17 @@ const ExperienceGrid = () => {
       // 2. Fetch Restaurants specifically for this dish
       const restQuery = `${dish.name} restaurant India`;
       let restaurants = [];
-      if (OLA_MAPS_API_KEY) {
-        const oRes = await fetch(`https://api.olamaps.io/places/v1/textsearch?query=${encodeURIComponent(restQuery)}&api_key=${OLA_MAPS_API_KEY}`);
-        const oData = await oRes.json();
-        if (oData?.results) {
-          restaurants = oData.results.map((r, idx) => ({
-            id: r.place_id, name: r.name, desc: r.formatted_address || "Famous for this dish!",
-            img: getRestaurantImage(idx), isFood: true, isRestaurant: true, lat: r.geometry?.location?.lat, lng: r.geometry?.location?.lng
-          }));
-        }
+      const oRes = await fetch(`${FASTAPI_BASE_URL}/get_restraunts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: restQuery })
+      });
+      const oData = await oRes.json();
+      if (oData?.results) {
+        restaurants = oData.results.map((r, idx) => ({
+          id: r.place_id, name: r.name, desc: r.formatted_address || "Famous for this dish!",
+          img: getRestaurantImage(idx), isFood: true, isRestaurant: true, lat: r.lat, lng: r.lng
+        }));
       }
       if (restaurants.length === 0) {
         const restRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(restQuery)}&limit=15`);
