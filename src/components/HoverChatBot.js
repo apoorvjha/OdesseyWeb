@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, X, Send, Bot, ShieldAlert, MapPin, Navigation } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-const OLA_MAPS_API_KEY = process.env.REACT_APP_OLA_MAPS_API_KEY || "";
+const FASTAPI_BASE_URL = 'http://127.0.0.1:8000';
 
 const HoverChatbot = () => {
   const navigate = useNavigate();
@@ -44,14 +44,15 @@ const HoverChatbot = () => {
           try {
             let locationName = "";
             
-            // 1. Try Ola Maps Reverse Geocoding
-            if (OLA_MAPS_API_KEY) {
-              const res = await fetch(`https://api.olamaps.io/places/v1/reverse-geocode?latlng=${latitude},${longitude}&api_key=${OLA_MAPS_API_KEY}`);
-              const data = await res.json();
-              if (data?.results && data.results.length > 0) {
-                // Grab the city/locality from Ola Maps response
-                locationName = data.results[0].formatted_address;
-              }
+            // 1. Try Reverse Geocoding via FastAPI
+            const res = await fetch(`${FASTAPI_BASE_URL}/reverse_geocode`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ lat: latitude, lng: longitude })
+            });
+            const data = await res.json();
+            if (data?.formatted_address) {
+              locationName = data.formatted_address;
             }
 
             // 2. Free Fallback (OpenStreetMap Nominatim) if Ola API is missing/fails
@@ -162,20 +163,36 @@ const HoverChatbot = () => {
     setMapData(null); // Clear previous map if any
 
     try {
-      const response = await fetch('http://localhost:11434/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'llama3', // Change if using mistral/phi3
-          messages: [systemPrompt, ...newContext],
-          stream: false
-        })
-      });
+      // const response = await fetch('http://localhost:11434/api/chat', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({
+      //     model: 'llama3', // Change if using mistral/phi3
+      //     messages: [systemPrompt, ...newContext],
+      //     stream: false
+      //   })
+      // });
 
-      if (!response.ok) throw new Error("Network response was not ok");
+      // if (!response.ok) throw new Error("Network response was not ok");
+      const OLLAMA_BASE_URL = 'http://127.0.0.1:5051/api';
+      const ollamaResponse = await fetch(`${OLLAMA_BASE_URL}/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gemma3:1b', // Or your preferred model
+        prompt: systemPrompt.content + '\n\n' + newContext.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n'),
+        stream: false,
+        temperature: 0.1,
+      }),
+    });
+
+    if (!ollamaResponse.ok) {
+      console.error('Ollama API error:', ollamaResponse.statusText);
+      return null;
+    }
       
-      const data = await response.json();
-      let botRawText = data.message.content;
+      const data = await ollamaResponse.json();
+      let botRawText = data.response;
 
       // --- ACTION PARSER ---
       let routeAction = null;
@@ -222,13 +239,15 @@ const HoverChatbot = () => {
         setIsTyping(true);
         let foundLocation = null;
         try {
-          if (OLA_MAPS_API_KEY) {
-            const oRes = await fetch(`https://api.olamaps.io/places/v1/textsearch?query=${encodeURIComponent(mapsTarget)}&api_key=${OLA_MAPS_API_KEY}`);
-            const oData = await oRes.json();
-            if (oData?.results && oData.results.length > 0) {
-              const loc = oData.results[0];
-              foundLocation = { lat: loc.geometry?.location?.lat, lng: loc.geometry?.location?.lng, name: loc.name, address: loc.formatted_address };
-            }
+          const oRes = await fetch(`${FASTAPI_BASE_URL}/get_restraunts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: mapsTarget })
+          });
+          const oData = await oRes.json();
+          if (oData?.results && oData.results.length > 0) {
+            const loc = oData.results[0];
+            foundLocation = { lat: loc.lat, lng: loc.lng, name: loc.name, address: loc.formatted_address };
           }
 
           if (foundLocation) {
