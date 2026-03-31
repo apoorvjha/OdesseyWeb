@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const OLA_MAPS_API_KEY = process.env.REACT_APP_OLA_MAPS_API_KEY || ""; 
+const FASTAPI_BASE_URL = 'http://127.0.0.1:8000'; 
 
 // --- EXPANDED SMART DESTINATION DATABASE (25 Destinations) ---
 const destinationDB = [
@@ -47,15 +47,17 @@ const SearchAutocomplete = ({ value, onChange, placeholder }) => {
     if (!value || value.length < 2) { setSuggestions([]); return; }
     const delayDebounceFn = setTimeout(async () => {
       try {
-        if (OLA_MAPS_API_KEY) {
-          const res = await fetch(`https://api.olamaps.io/places/v1/autocomplete?input=${encodeURIComponent(value)}&api_key=${OLA_MAPS_API_KEY}`);
+        const res = await fetch(`${FASTAPI_BASE_URL}/autocomplete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ input: value })
+          });
           const data = await res.json();
           if (data?.predictions) { setSuggestions(data.predictions.map(p => p.description)); return; }
-        }
-        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(value)}&limit=5`);
-        const data = await res.json();
-        if (data?.features) {
-          const parsed = data.features.filter(f => f.properties.country === 'India' || f.properties.countrycode === 'IN')
+        const fallbackRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(value)}&limit=5`);
+        const fallbackData = await fallbackRes.json();
+        if (fallbackData?.features) {
+          const parsed = fallbackData.features.filter(f => f.properties.country === 'India' || f.properties.countrycode === 'IN')
             .map(f => [f.properties.name, f.properties.state].filter(Boolean).join(', '));
           setSuggestions([...new Set(parsed)]);
         }
